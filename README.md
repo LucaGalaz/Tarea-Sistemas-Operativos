@@ -6,7 +6,7 @@
 ---
 
 ## 1. Propósito de la aplicación
-El propósito de este proyecto es desarrollar un **Administrador de Usuarios** en C/C++.  
+El propósito de este proyecto es desarrollar un **Administrador de Usuarios**.  
 El sistema permite gestionar usuarios de manera simple a través de un menú con opciones numéricas.  
 
 Las principales funcionalidades son:  
