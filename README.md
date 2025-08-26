@@ -54,11 +54,11 @@ Esto permite modificar el archivo de usuarios sin necesidad de cambiar el códig
 ## 4. Integrantes del grupo
 
    **GRUPO 7**
-   - Cuevas Cárdenas,Ian Alexander
+   - Cuevas Cárdenas, Ian Alexander.
 
-   - Lara Briones,Marcelo Alejandro
+   - Lara Briones, Marcelo Alejandro.
 
-   - Galaz Esandi,Luca
+   - Galaz Esandi, Luca.
 
 ---
 
