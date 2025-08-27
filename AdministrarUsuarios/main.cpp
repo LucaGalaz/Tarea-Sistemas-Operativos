@@ -12,6 +12,7 @@ struct Usuario {
 	int id;
 	string perfil;
 	string pass;
+    string username;
 };
 
 void cargarUsuarios(vector<Usuario>& usuarios, const string& nombreArchivo, int& contadorId);
@@ -81,8 +82,7 @@ void guardarUsuario(const Usuario& u, const string& nombreArchivo) {
         return;
     }
 
-    archivo << u.id << "," << u.nombre << "," << u.perfil << "," << u.pass << "\n";
-    archivo.close();
+    archivo << u.id << ","<< u.nombre << ","<< u.username << ","<< u.perfil << ","<< u.pass << "\n";
 
     
     cout << "Usuarios guardados en " << nombreArchivo << endl;
@@ -113,6 +113,12 @@ void cargarUsuarios(vector<Usuario>& usuarios, const string& nombreArchivo, int&
         u.nombre = linea.substr(0, pos);
         linea = linea.substr(pos + 1);
 
+        // username
+        pos = linea.find(",");
+        u.username = linea.substr(0, pos);
+        linea = linea.substr(pos + 1);
+
+
         // perfil
         pos = linea.find(",");
         u.perfil = linea.substr(0, pos);
@@ -139,6 +145,9 @@ void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, 
 	cout << "Nombre del usuario"<< endl;
 	cin.ignore();
 	getline(cin, u.nombre);
+
+    cout << "Username del usuario: " << endl;
+    getline(cin, u.username);    
 	
 	u.id = contadorId;
 	contadorId++;
@@ -171,16 +180,19 @@ void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, 
 }
 
 void listarUsuarios(const vector<Usuario>& usuarios) {
-	limpiarConsola();
-	cout << "Lista de usuarios:" << endl;
-	if (usuarios.empty()) { 
-		cout << "Lista de usuarios vacia :(" <<endl; 
-		return;
-	}
-	cout << "ID\tNombre\tPerfil\n";
-	for (const Usuario& u : usuarios) {
-		cout << u.id << "\t" << u.nombre << "\t" << u.perfil << endl;
-	}
+    limpiarConsola();
+    cout << "Lista de usuarios:" << endl;
+    if (usuarios.empty()) { 
+        cout << "Lista de usuarios vacía " << endl; 
+        return;
+    }
+
+    // Cabecera con username incluido
+    cout << "ID\tNombre\t\tUsername\tPerfil\n";
+
+    for (const Usuario& u : usuarios) {
+        cout << u.id << "\t" << u.nombre << "\t\t" << u.username << "\t\t" << u.perfil << endl;
+    }
 }
 void eliminarUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, const string& nombreArchivo) {
     limpiarConsola();
@@ -242,7 +254,3 @@ void limpiarConsola() {
 	    system("clear"); // Para Linux 
 	#endif
 }
-
-	
-	
-
