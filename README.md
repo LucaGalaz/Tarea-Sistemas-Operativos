@@ -35,10 +35,10 @@ Para compilar y ejecutar el programa se deben seguir estos pasos:
    cd Tarea-Sistemas-Operativos
    
 2. Compilar el código (ejemplo en C++):
-   g++ main.cpp -o admin_usuarios (ejemplo)
+   g++ main.cpp -o main
 
 3. Ejecutar el programa:
-   ./admin_usuarios (ejemplo)
+   ./main
 
 ---
 
