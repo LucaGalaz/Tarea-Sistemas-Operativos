@@ -3,9 +3,7 @@
 #include <cstdlib> // para el getenv
 #include <fstream> // para los archivos
 
-
 using namespace std;
-
 
 struct Usuario {
 	string nombre;
@@ -32,7 +30,6 @@ int main() {
     //ofstream archivo("USUARIOS.TXT", ios::trunc); // abre el archivo y lo deja vacío
     //archivo.close();
 
-    
     // Leer variable de entorno
     const char* archivo_env = getenv("USER_FILE");
     string nombreArchivo;
@@ -71,7 +68,6 @@ int main() {
         
     }while (opcion !=0); 
    
-    
     return 0;
 }
 
@@ -84,10 +80,8 @@ void guardarUsuario(const Usuario& u, const string& nombreArchivo) {
 
     archivo << u.id << ","<< u.nombre << ","<< u.username << ","<< u.perfil << ","<< u.pass << "\n";
 
-    
     cout << "Usuarios guardados en " << nombreArchivo << endl;
 }
-
 
 void cargarUsuarios(vector<Usuario>& usuarios, const string& nombreArchivo, int& contadorId) {
     ifstream archivo(nombreArchivo);
@@ -136,8 +130,6 @@ void cargarUsuarios(vector<Usuario>& usuarios, const string& nombreArchivo, int&
     archivo.close();
 }
 
-
-
 void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, int& contadorId, const string& nombreArchivo){
 	limpiarConsola();
 	Usuario u;
@@ -160,8 +152,6 @@ void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, 
 	cin >> u.pass;
 	usuarios.push_back(u);	
 	
-	//TESTTTTTTTTTTTTTTTTTT
-	
 	cout << "Desea guardar el usuario en el archivo?" <<endl;
 	cout << "1) Guardar\n2) Cancelar" << endl;
 	cin >> aux; 
@@ -174,9 +164,6 @@ void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, 
 		cout << "Usuario solo guardado en memoria.\n";
 		
 	    }
-	
-
-	
 }
 
 void listarUsuarios(const vector<Usuario>& usuarios) {
@@ -244,8 +231,6 @@ void eliminarUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuarda
     }
     cout << "No se encontró un usuario con ese ID.\n";
 }
-	
-
 
 void limpiarConsola() {
 	#ifdef _WIN32
