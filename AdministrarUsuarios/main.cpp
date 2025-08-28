@@ -138,8 +138,8 @@ void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, 
 	cin.ignore();
 	getline(cin, u.nombre);
 
-    cout << "Username del usuario: " << endl;
-    getline(cin, u.username);    
+        cout << "Username del usuario: " << endl;
+        getline(cin, u.username);    
 	
 	u.id = contadorId;
 	contadorId++;
@@ -150,18 +150,19 @@ void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, 
 	
 	cout << "Ingrese su contraseña:" << endl;
 	cin >> u.pass;
-	usuarios.push_back(u);	
+		
 	
 	cout << "Desea guardar el usuario en el archivo?" <<endl;
 	cout << "1) Guardar\n2) Cancelar" << endl;
 	cin >> aux; 
 	if (aux == 1) {
 		guardarUsuario(u, nombreArchivo);
+		usuarios.push_back(u);
     		cout << "Usuario guardado en archivo.\n";
 		}
 	 else {
 	 	
-		cout << "Usuario solo guardado en memoria.\n";
+		cout << "Usuario no guardado\n";
 		
 	    }
 }
@@ -216,7 +217,7 @@ void eliminarUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuarda
 
                 // reescribe el archivo con los usuarios restantes
                 ofstream archivo(nombreArchivo, ios::trunc);
-                for (const auto& uArchivo : usuariosAGuardar) {
+                for (const auto& uArchivo : usuarios) {
                     archivo << uArchivo.id << "," << uArchivo.nombre << ","
                             << uArchivo.perfil << "," << uArchivo.pass << "\n";
                 }
