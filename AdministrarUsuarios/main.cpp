@@ -145,8 +145,13 @@ void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, 
 	contadorId++;
 	
 	
-	cout << "¿Que rol cumple el usuario? Admin o General" << endl;
-	cin >> u.perfil;
+	do {
+		cout << "Ingrese perfil (admin/general): ";
+		cin >> u.perfil;
+
+		if (u.perfil != "admin" && u.perfil != "general") {
+		    cout << "Perfil invalido. Solo se permite 'admin' o 'general'." << endl;
+        }while (u.perfil != "admin" && u.perfil != "general");
 	
 	cout << "Ingrese su contraseña:" << endl;
 	cin >> u.pass;
