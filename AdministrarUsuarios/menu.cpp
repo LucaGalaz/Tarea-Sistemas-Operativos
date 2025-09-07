@@ -62,7 +62,8 @@ int main(int argc, char* argv[]) {
                 }
                 break;
             case 2:
-                ejecutarMultiplicacion(); // funcion en matrices.h
+                cout << "[Matrices] Multiplicacion de matrices NxN (en construcción)\n";
+                //ejecutarMultiplicacion(); // funcion en matrices.h
                 break;
             case 3:
                 iniciarJuego(); // funcion en juego.h
