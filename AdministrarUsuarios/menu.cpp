@@ -1,12 +1,12 @@
 #include <iostream>
 #include <string>
 #include <cstring>   // para strcmp
-#include "usuarios.h"
+#include "headers/usuarios.h"
 #include "headers/matrices.h"
-#include "juego.h"
-#include "palindrome.h"
-#include "funcion.h"
-#include "conteo.h"
+#include "headers/juego.h"
+#include "headers/palindrome.h"
+#include "headers/funcion.h"
+#include "headers/conteo.h"
 
 using namespace std;
 
