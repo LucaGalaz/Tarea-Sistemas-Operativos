@@ -1,8 +1,8 @@
 # Proyecto – Menpu Principal
 
-**Sistemas Operativos**\n
-**Universidad Austral de Chile**\n
-**Profesor:** Dr. Luis Veas-Castillo\n
+**Sistemas Operativos**
+**Universidad Austral de Chile**
+**Profesor:** Dr. Luis Veas-Castillo
 
 ---
 
