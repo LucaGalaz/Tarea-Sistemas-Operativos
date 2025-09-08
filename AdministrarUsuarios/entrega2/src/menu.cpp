@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
         else if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) password = argv[++i];
         else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) filename = argv[++i];
     }
-    cout << filename;
+    
     //leer variables de entorno
     const char* usuariosEnv = std::getenv("USER_FILE");
     const char* perfilesEnv = std::getenv("PERFIL_FILE");
