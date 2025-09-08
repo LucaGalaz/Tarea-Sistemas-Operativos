@@ -1,7 +1,9 @@
-# Proyecto – Menu Principal
+# Proyecto – Menú Principal
 
 **Sistemas Operativos**
+
 **Universidad Austral de Chile**
+
 **Profesor:** Dr. Luis Veas-Castillo
 
 ---
