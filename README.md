@@ -1,4 +1,4 @@
-# Proyecto – Menpu Principal
+# Proyecto – Menu Principal
 
 **Sistemas Operativos**
 **Universidad Austral de Chile**
