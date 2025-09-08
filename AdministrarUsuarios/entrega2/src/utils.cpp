@@ -8,6 +8,7 @@
 #include <vector>
 #include <set>
 #include "utils.h"
+#include <limits> 
 
 using namespace std;
 
@@ -54,15 +55,30 @@ void conteoTexto(const string &filename) {
     cout << "Palabras: " << palabras << "\n";
 }
 
+
+
 void calcularFuncion() {
     cout << "\n--- Calculo de f(x) = x*x + 2x + 8 ---\n";
-    cout << "Ingrese un valor para x: ";
     double x;
-    cin >> x;
-    cin.ignore();
+
+    while (true) {
+        cout << "Ingrese un valor numerico (se aceptan decimales) para x: ";
+        cin >> x;
+
+        if (cin.fail()) {
+            cin.clear(); // limpia el estado de error
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // descarta la entrada inválida
+            cout << "Entrada invalida. Intente nuevamente.\n";
+        } else {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            break; 
+        }
+    }
+
     double resultado = x*x + 2*x + 8;
     cout << "f(" << x << ") = " << resultado << "\n";
 }
+
 
 void iniciarJuego() {
     cout << "[Juego] Módulo en construccion\n";
