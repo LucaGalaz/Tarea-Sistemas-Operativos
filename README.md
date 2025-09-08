@@ -59,7 +59,7 @@ El programa de multiplicación de matrices es un ejecutable separado. Para compi
     ```bash
     ./multi_matrices "matriz/A.txt" "matriz/B.txt" "#"
     ```
-    [cite_start]Este programa recibe como argumento las rutas completas de los archivos `A.TXT` y `B.TXT` que contienen las matrices y el separador de los elementos (en este caso, `#`)[cite: 43].
+   Este programa recibe como argumento las rutas completas de los archivos `A.TXT` y `B.TXT` que contienen las matrices y el separador de los elementos (en este       caso, `#`)
 
 ---
 
