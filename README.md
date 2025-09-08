@@ -1,9 +1,8 @@
-# Proyecto – Administrador de Usuarios
+# Proyecto – Menpu Principal
 
 **Sistemas Operativos**
 **Universidad Austral de Chile**
 **Profesor:** Dr. Luis Veas-Castillo
-**Fecha de Entrega:** 08/09/2025 hasta las 9:00 am
 
 ---
 
