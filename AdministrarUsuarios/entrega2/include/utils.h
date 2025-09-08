@@ -10,7 +10,6 @@ void multiplicarMatrices();
 bool isPalindrome(const string &text);
 void opcionPalindromo();
 void adminUsuarios();
-string verificarLogin(const std::string& archivo, const std::string& username, const std::string& password);
 
-// Nueva función para obtener opciones según perfil
+string verificarLogin(const std::string& archivo, const std::string& username, const std::string& password);
 set<int> obtenerOpcionesPerfil(const string& perfil, const string& archivoPerfiles);
