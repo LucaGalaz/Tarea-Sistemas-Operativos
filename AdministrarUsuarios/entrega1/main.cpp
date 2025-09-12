@@ -6,10 +6,10 @@
 using namespace std;
 
 struct Usuario {
-	string nombre;
-	int id;
-	string perfil;
-	string pass;
+    string nombre;
+    int id;
+    string perfil;
+    string pass;
     string username;
 };
 
@@ -26,10 +26,6 @@ int main() {
     vector<Usuario> usuarios;
     vector<Usuario> usuariosAGuardar;
     
-    //esto es para resetear el archivo y los id
-    //ofstream archivo("USUARIOS.TXT", ios::trunc); // abre el archivo y lo deja vacío
-    //archivo.close();
-
     // Leer variable de entorno
     const char* archivo_env = getenv("USER_FILE");
     string nombreArchivo;
@@ -45,16 +41,15 @@ int main() {
     cargarUsuarios(usuarios, nombreArchivo, contadorId);
     
     do {
-    cout << "====== Administrador de Usuarios ======\n" << endl;
-    cout << "Que accion desea realizar\n 0. Salir\n 1. Crear Usuario\n 2. Eliminar Usuario\n 3. Listar Usuarios"<< endl;
-    cin >> opcion;
-    switch (opcion) {
+        cout << "====== Administrador de Usuarios ======\n" << endl;
+        cout << "Que accion desea realizar\n 0. Salir\n 1. Crear Usuario\n 2. Eliminar Usuario\n 3. Listar Usuarios"<< endl;
+        cin >> opcion;
+        switch (opcion) {
             case 1:
                 crearUsuario(usuarios, usuariosAGuardar, contadorId, nombreArchivo);
                 break;
             case 2:
                 eliminarUsuario(usuarios, usuariosAGuardar, nombreArchivo);
-                //guardarUsuario(usuarios, nombreArchivo);
                 break;
             case 3:
                 listarUsuarios(usuarios);
@@ -65,9 +60,8 @@ int main() {
             default:
                 cout << "Opcion incorrecta...\n";
         }
-        
-    }while (opcion !=0); 
-   
+    } while (opcion != 0); 
+    
     return 0;
 }
 
@@ -78,8 +72,7 @@ void guardarUsuario(const Usuario& u, const string& nombreArchivo) {
         return;
     }
 
-    archivo << u.id << ","<< u.nombre << ","<< u.username << ","<< u.perfil << ","<< u.pass << "\n";
-
+    archivo << u.id << "," << u.nombre << "," << u.username << "," << u.perfil << "," << u.pass << "\n";
     cout << "Usuarios guardados en " << nombreArchivo << endl;
 }
 
@@ -112,7 +105,6 @@ void cargarUsuarios(vector<Usuario>& usuarios, const string& nombreArchivo, int&
         u.username = linea.substr(0, pos);
         linea = linea.substr(pos + 1);
 
-
         // perfil
         pos = linea.find(",");
         u.perfil = linea.substr(0, pos);
@@ -131,62 +123,56 @@ void cargarUsuarios(vector<Usuario>& usuarios, const string& nombreArchivo, int&
 }
 
 void crearUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, int& contadorId, const string& nombreArchivo){
-	limpiarConsola();
-	Usuario u;
-	int aux;
-	cout << "Nombre del usuario"<< endl;
-	cin.ignore();
-	getline(cin, u.nombre);
+    limpiarConsola();
+    Usuario u;
+    int aux;
+    cout << "Nombre del usuario: ";
+    cin.ignore();
+    getline(cin, u.nombre);
 
-        cout << "Username del usuario: " << endl;
-        getline(cin, u.username);    
-	
-	u.id = contadorId;
-	contadorId++;
-	
-	
-	do {
-		cout << "Ingrese perfil (admin/general): ";
-		cin >> u.perfil;
+    cout << "Username del usuario: ";
+    getline(cin, u.username);    
 
-		if (u.perfil != "admin" && u.perfil != "general") {
-		    cout << "Perfil invalido. Solo se permite 'admin' o 'general'." << endl;
-        }while (u.perfil != "admin" && u.perfil != "general");
-	
-	cout << "Ingrese su contraseña:" << endl;
-	cin >> u.pass;
-		
-	
-	cout << "Desea guardar el usuario en el archivo?" <<endl;
-	cout << "1) Guardar\n2) Cancelar" << endl;
-	cin >> aux; 
-	if (aux == 1) {
-		guardarUsuario(u, nombreArchivo);
-		usuarios.push_back(u);
-    		cout << "Usuario guardado en archivo.\n";
-		}
-	 else {
-	 	
-		cout << "Usuario no guardado\n";
-		
-	    }
+    u.id = contadorId;
+    contadorId++;
+    
+    do {
+        cout << "Ingrese perfil (admin/general): ";
+        cin >> u.perfil;
+
+        if (u.perfil != "admin" && u.perfil != "general") {
+            cout << "Perfil invalido. Solo se permite 'admin' o 'general'.\n";
+        }
+    } while (u.perfil != "admin" && u.perfil != "general");
+    
+    cout << "Ingrese su contraseña: ";
+    cin >> u.pass;
+    
+    cout << "Desea guardar el usuario en el archivo? (1: Guardar, 2: Cancelar): ";
+    cin >> aux; 
+    if (aux == 1) {
+        guardarUsuario(u, nombreArchivo);
+        usuarios.push_back(u);
+        cout << "Usuario guardado en archivo.\n";
+    } else {
+        cout << "Usuario no guardado.\n";
+    }
 }
 
 void listarUsuarios(const vector<Usuario>& usuarios) {
     limpiarConsola();
-    cout << "Lista de usuarios:" << endl;
+    cout << "Lista de usuarios:\n";
     if (usuarios.empty()) { 
-        cout << "Lista de usuarios vacía " << endl; 
+        cout << "Lista de usuarios vacía.\n"; 
         return;
     }
 
-    // Cabecera con username incluido
     cout << "ID\tNombre\t\tUsername\tPerfil\n";
-
     for (const Usuario& u : usuarios) {
         cout << u.id << "\t" << u.nombre << "\t\t" << u.username << "\t\t" << u.perfil << endl;
     }
 }
+
 void eliminarUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuardar, const string& nombreArchivo) {
     limpiarConsola();
     int id;
@@ -196,31 +182,19 @@ void eliminarUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuarda
     for (int i = 0; i < usuarios.size(); i++) {
         Usuario& u = usuarios[i];
         if (u.id == id) {
-            //advertencia si el id es de un admin
-            if (u.perfil == "Admin" || u.perfil == "ADMIN") {
+            if (u.perfil == "admin" || u.perfil == "ADMIN") {
                 cout << "ALERTA: Está a punto de eliminar un usuario con perfil ADMIN.\n";
             }
 
-            // confirmar si se elimina
             int opcion;
             cout << "ID de usuario a borrar: " << id << "\n";
-            cout << "1) Eliminar\n";
-            cout << "2) Cancelar\n";
+            cout << "1) Eliminar\n2) Cancelar\n";
             cin >> opcion;
 
             if (opcion == 1) {
-                // elimina de la memoria
                 usuarios.erase(usuarios.begin() + i);
 
-                // elimina al usuario del archivo si esque estaba
-                for (int j = 0; j < usuariosAGuardar.size(); j++) {
-                    if (usuariosAGuardar[j].id == id) {
-                        usuariosAGuardar.erase(usuariosAGuardar.begin() + j);
-                        break;
-                    }
-                }
-
-                // reescribe el archivo con los usuarios restantes
+                // Elimina del archivo
                 ofstream archivo(nombreArchivo, ios::trunc);
                 for (const auto& uArchivo : usuarios) {
                     archivo << uArchivo.id << "," << uArchivo.nombre << ","
@@ -239,9 +213,9 @@ void eliminarUsuario(vector<Usuario>& usuarios, vector<Usuario>& usuariosAGuarda
 }
 
 void limpiarConsola() {
-	#ifdef _WIN32
-	    system("cls");   // Para Windows
-	#else
-	    system("clear"); // Para Linux 
-	#endif
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
 }
