@@ -16,138 +16,178 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-static string LIBROS_DIR="./Libros"; //carpeta libros
-static string LOG_PATH="./logs/idx_parallel.log"; //archivo de log
-static string MAPA_PATH="./Libros/MAPA-LIBROS.txt"; //mapa de libros
+static string LIBROS_DIR = "./Libros";
+static string LOG_PATH   = "./logs/idx_parallel.log";
+static string MAPA_PATH  = "./Libros/MAPA-LIBROS.txt";
 
-static mutex mtx_idx, mtx_log; //mutex para indice y log
+static mutex mtx_idx, mtx_log;
 
-static map<string,map<int,int>> INDICE; //indice global: palabra -> libroID -> cantidad
+//indice guarda de la siguiente manera (string es el nombre, el primer int es el id del libro y el segundo es la cantidad de veces que aparece)
+static map<string, map<int,int>> INDICE;
 
 struct Libro { int id; string nombre; fs::path path; };
 
-//limpia palabra: solo alfanumericos y minusculas
-string limpiarPalabra(const string &pal){
+
+string limpiarPalabra(const string &pal) {
     string out;
-    for(char c:pal) if(isalnum(c)) out+=tolower(c);
+    for (char c : pal) {
+        if (isalpha(c)) out += tolower(c); 
+    }
     return out;
 }
 
+//retorna un string con el fecha y hora para timestamp de inicio y timestamp de término 
 static inline string ts_now(){
-    using namespace chrono;
-    auto t=system_clock::now();
-    time_t tt=system_clock::to_time_t(t);
+    using namespace std::chrono;
+    auto t  = system_clock::now();
+    time_t tt = system_clock::to_time_t(t);
     tm tmv{};
     #ifdef _WIN32
-    localtime_s(&tmv,&tt);
+    localtime_s(&tmv, &tt);
     #else
-    localtime_r(&tt,&tmv);
+    localtime_r(&tt, &tmv);
     #endif
-    char buf[32]; strftime(buf,sizeof(buf),"%Y-%m-%d %H:%M:%S",&tmv);
+    char buf[32]; strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tmv);
     return string(buf);
 }
 
-//asegura existencia de ./logs y ./obj
+//asegura que existann ./logs y ./obj
 static void asegurarDirs(){
-    if(!fs::exists("./logs")) fs::create_directory("./logs");
-    if(!fs::exists("./obj")) fs::create_directory("./obj");
+    if (!fs::exists("./logs")) fs::create_directory("./logs");
+    if (!fs::exists("./obj"))  fs::create_directory("./obj");
 }
 
-//construye mapa de libros: vector con id y nombre
+//Cronstruimos mapa de libros
 static vector<Libro> construirMapaLibros(const string& dir){
     vector<Libro> L;
-    for(auto &e: fs::directory_iterator(dir)){
-        if(!e.is_regular_file()) continue;
-        auto fname=e.path().filename().string();
-        if(fname=="MAPA-LIBROS.txt") continue; 
-        L.push_back({0,fname,e.path()});
+    //Recorremos la carpeta libros
+    for (auto &e : fs::directory_iterator(dir)) {
+        if (!e.is_regular_file()) continue;
+        auto fname = e.path().filename().string();
+        //evitamos que se incluya MAPA-LIBROS.txt
+        if (fname == "MAPA-LIBROS.txt") continue;
+        //guarda en el vector
+        L.push_back({0, fname, e.path()});
     }
-    sort(L.begin(),L.end(),[](auto &a,auto &b){ return a.nombre<b.nombre; }); //orden alfabetico
-    for(int i=0;i<(int)L.size();++i) L[i].id=i+1; //asigna ID
-    ofstream mapa(MAPA_PATH,ios::trunc);
-    for(auto &x:L) mapa<<x.id<<"; "<<x.nombre<<"\n";
-    return L; //retorna vector con libros
+    //ordena alfabeticamente los nombres
+    sort(L.begin(), L.end(), [](auto& a, auto& b){ return a.nombre < b.nombre; });
+    //asigna los ID
+    for (int i=0;i<(int)L.size();++i) 
+        L[i].id = i+1;
+
+    //crea el archivo MAPA-LIBROS.txt
+    ofstream mapa(MAPA_PATH, ios::trunc);
+    for (auto &x : L) 
+        mapa << x.id << "; " << x.nombre << "\n";
+
+    //retornamos el vector con todos los libros
+    return L;
 }
 
-//procesa un libro: cuenta palabras, fusiona al indice global y escribe log
-static void procesarLibro(const Libro &L,int idThread){
-    string t0=ts_now();
-    unordered_map<string,int> local; //indice local
+//procesa un libro cuenta palabra por palabra, fusiona al indice global y deja linea en el log 
+static void procesarLibro(const Libro& L, int idThread) {
+    string t0 = ts_now();
+    // conteo local
+    unordered_map<string,int> local;
     ifstream in(L.path);
     string tok;
-    while(in>>tok){
-        tok=limpiarPalabra(tok);
-        if(!tok.empty()) local[tok]++;
+    while (in >> tok) {
+        tok = limpiarPalabra(tok);
+        if (!tok.empty() && tok.size() > 1) {  // solo palabras de 2 o más letras
+            local[tok]++;
+        }
     }
-    int total=0; for(auto &kv:local) total+=kv.second;
+    int total = 0; for (auto& kv : local) total += kv.second;
 
-    { //fusion al indice global
-    lock_guard<mutex> lk(mtx_idx);
-    for(auto &kv:local) INDICE[kv.first][L.id]+=kv.second;
+    //fusion  al INDICE
+    {
+    lock_guard<mutex> lk(mtx_idx); //se ocupa el lock_guard<mutex> para que solo un hilo a la vez tenga el permiso de modifcar 
+    for (auto& kv : local) {       //el indice globlal y asi evitar errores de acceso simultaneo
+        INDICE[kv.first][L.id] += kv.second; 
+    }
     }
 
-    string t1=ts_now();
+    //toma de tiempo
+    string t1 = ts_now();
 
-    { //escribir log
+    // escribe el log
+    {
     lock_guard<mutex> lk(mtx_log);
-    ofstream lg(LOG_PATH,ios::app);
-    lg<<idThread<<";"<<L.id<<";"<<total<<";"<<t0<<";"<<t1<<"\n";
+    ofstream lg(LOG_PATH, ios::app);
+    lg << idThread << ";" << L.id << ";" << total << ";" << t0 << ";" << t1 << "\n";
     }
 }
 
-int main(int argc,char* argv[]){
-    if(argc!=3){ cerr<<"Uso: "<<argv[0]<<" <salida.idx> <carpeta_libros>\n"; return 1;}
-    string salidaIdx=argv[1];
-    LIBROS_DIR=argv[2];
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        cerr << "Uso: " << argv[0] << " <salida.idx> <carpeta_libros>\n";
+        return 1;
+    }
+    string salidaIdx = argv[1];
+    LIBROS_DIR = argv[2];
 
-    asegurarDirs(); //crear dirs si no existen
+    asegurarDirs();
 
-    if(!fs::exists(LIBROS_DIR)||!fs::is_directory(LIBROS_DIR)){
-        cerr<<"Error: '"<<LIBROS_DIR<<"' no existe o no es directorio.\n";
+    // validar carpeta de los libros
+    if (!fs::exists(LIBROS_DIR) || !fs::is_directory(LIBROS_DIR)) {
+        cerr << "Error: '" << LIBROS_DIR << "' no existe o no es directorio.\n";
         return 1;
     }
 
-    int NTHREADS=(int)thread::hardware_concurrency(); 
-    if(NTHREADS<=0) NTHREADS=2;
-    if(const char* p=getenv("N_THREADS")) try{ NTHREADS=max(1,stoi(p)); } catch(...){}
+    //leemos las variables de entorno N-THREADS y N-LOTE
+    int NTHREADS = (int)thread::hardware_concurrency();
+    if (NTHREADS <= 0) NTHREADS = 2;
+    if (const char* p = getenv("N_THREADS")) { try { NTHREADS = max(1, stoi(p)); } catch(...){} }
 
-    int NLOTE=4; //tamaño de lote por defecto
-    if(const char* p=getenv("N_LOTE")) try{ NLOTE=max(1,stoi(p)); } catch(...){}
+    int NLOTE = 4;
+    if (const char* p = getenv("N_LOTE")) { try { NLOTE = max(1, stoi(p)); } catch(...){} }
 
-    vector<Libro> libros=construirMapaLibros(LIBROS_DIR);
-    if(libros.empty()){ cerr<<"No se encontraron libros en: "<<LIBROS_DIR<<"\n"; return 1;}
+    // construimos mapa de libros y lo guardamos en MAPA-LIBROS.txt
+    vector<Libro> libros = construirMapaLibros(LIBROS_DIR);
+    if (libros.empty()) {
+        cerr << "No se encontraron libros en: " << LIBROS_DIR << "\n";
+        return 1;
+    }
 
-    ofstream lg(LOG_PATH,ios::trunc);
-    lg<<"id_thread;id_libro;cant_palabras;ts_inicio;ts_termino\n";
+    //encabezado del log
+    ofstream lg(LOG_PATH, ios::trunc);
+    lg << "id_thread;id_libro;cant_palabras;ts_inicio;ts_termino\n";
 
-    const int n=(int)libros.size();
-    for(int ini=0;ini<n;ini+=NLOTE){
-        int fin=min(ini+NLOTE,n);
+    // procesamiento por lotes + threads
+    const int n = (int)libros.size();
+    for (int ini = 0; ini < n; ini += NLOTE) {
+        int fin = min(ini + NLOTE, n);
         atomic<int> next{ini};
-        int H=min(NTHREADS,fin-ini);
-        vector<thread> pool; pool.reserve(H);
+        int H = min(NTHREADS, fin - ini);
 
-        auto worker=[&](int idThread){
-            while(true){
-                int k=next.fetch_add(1);
-                if(k>=fin) break;
-                procesarLibro(libros[k],idThread);
+        vector<thread> pool; pool.reserve(H);
+        auto worker = [&](int idThread) {
+            while (true) {
+                int k = next.fetch_add(1);
+                if (k >= fin) break;
+                procesarLibro(libros[k], idThread);
             }
         };
 
-        for(int t=1;t<=H;++t) pool.emplace_back(worker,t);
-        for(auto &th:pool) th.join();
+        for (int t = 1; t <= H; ++t) pool.emplace_back(worker, t);
+        for (auto& th : pool) th.join();
     }
 
-    { //.idx final
-        ofstream out(salidaIdx,ios::trunc);
-        for(auto &p:INDICE)
-            for(auto &doc:p.second) out<<p.first<<";"<<doc.first<<";"<<doc.second<<"\n";
+    // volcar .idx final con ID en vez de nombre: palabra;idLibro;frecuencia
+    {
+        ofstream out(salidaIdx, ios::trunc);
+        for (auto& p : INDICE) {
+            for (auto& doc : p.second) {
+                out << p.first << ";" << doc.first << ";" << doc.second << "\n";
+            }
+        }
     }
 
-    cout<<"OK\n";
-    cout<<"  IDX:  "<<salidaIdx<<"\n";
-    cout<<"  MAPA: "<<MAPA_PATH<<"\n";
-    cout<<"  LOG:  "<<LOG_PATH<<"\n";
+    // resumen
+    cout << "OK\n";
+    cout << "  IDX:  " << salidaIdx << "\n";
+    cout << "  MAPA: " << MAPA_PATH << "\n";
+    cout << "  LOG:  " << LOG_PATH << "\n";
     return 0;
+    
 }

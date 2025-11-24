@@ -222,8 +222,6 @@ int main(int argc, char* argv[]) {
         // Pausa antes de volver a mostrar el menú (excepto al salir)
         if (opcion != 0) {
             cout << "\nPresione Enter para volver al menu...\n";
-            // Usar cin.get() para esperar Enter
-            // cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Limpiar buffer si la lectura anterior fue con >>
             cin.get();
         }
 

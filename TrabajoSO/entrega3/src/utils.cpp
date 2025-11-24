@@ -9,11 +9,13 @@
 #include <set>
 #include "utils.h"
 #include <limits>
-#include <cstdlib>
+#include <cstdlib> // Para system()
 
 using namespace std;
 
-//limpia la consola
+// --- Funciones de Utilidad General ---
+
+// Limpia la consola (Multiplataforma)
 void limpiarConsola() {
 #ifdef _WIN32
     system("cls");
@@ -22,151 +24,219 @@ void limpiarConsola() {
 #endif
 }
 
-//elimina espacios al inicio y final
+// Elimina espacios al inicio y final
 string trim(const string& str) {
     size_t first = str.find_first_not_of(" \t\n\r");
-    if (string::npos == first) return "";
+    if (string::npos == first) {
+        return "";
+    }
     size_t last = str.find_last_not_of(" \t\n\r");
     return str.substr(first, (last - first + 1));
 }
 
-//verifica login
+// --- Lógica de Autenticación y Permisos ---
+
+// Verifica login contra USUARIOS.TXT (formato: id,nombre,username,perfil,pass)
 string verificarLogin(const string& archivo, const string& username, const string& password) {
     ifstream file(archivo);
     if (!file.is_open()) {
-        cerr << "error al abrir archivo: " << archivo << "\n";
+        cerr << "\nError: No se pudo abrir el archivo de usuarios: " << archivo << "\n";
         return "";
     }
 
     string linea;
     while (getline(file, linea)) {
         stringstream ss(linea);
-        string id_str, nombre, uName, perf, pass;
+        string id_str, nombre_completo, uName, perf, pass;
+
+        // Leer los 5 campos
         getline(ss, id_str, ',');
-        getline(ss, nombre, ',');
-        getline(ss, uName, ',');
+        getline(ss, nombre_completo, ',');
+        getline(ss, uName, ','); // El tercer campo es el username
         getline(ss, perf, ',');
-        getline(ss, pass);
+        getline(ss, pass); // El resto es la contraseña
 
         uName = trim(uName);
         perf = trim(perf);
         pass = trim(pass);
 
+        // Comparar username y password
         if (uName == username && pass == password) {
-            cout << "bienvenido " << nombre << " (" << perf << ")\n";
+            cout << "\nBienvenido " << nombre_completo << " (" << perf << ")\n";
             file.close();
-            return perf;
+            return perf; // Retorna el perfil si las credenciales son correctas
         }
     }
 
     file.close();
-    cerr << "usuario o contrasena incorrectos\n";
-    return "";
+    cerr << "\nUsuario o contrasena incorrectos.\n";
+    return ""; // Retorna vacío si no hay coincidencia
 }
 
-//obtiene opciones para un perfil
+// Obtiene las opciones permitidas para un perfil desde PERFILES.TXT
 set<int> obtenerOpcionesPerfil(const string& perfil, const string& archivoPerfiles) {
     set<int> opciones;
     ifstream file(archivoPerfiles);
-    if (!file.is_open()) return opciones;
+    if (!file.is_open()) {
+        cerr << "No se pudo abrir " << archivoPerfiles << "\n";
+        return opciones; // Retorna set vacío si el archivo no existe
+    }
 
     string linea;
     while (getline(file, linea)) {
         size_t pos = linea.find(';');
-        if (pos == string::npos) continue;
-        string nombrePerfil = trim(linea.substr(0, pos));
+        if (pos == string::npos) continue; // Ignora líneas sin ';'
+        string nombrePerfil = linea.substr(0, pos);
         string listaOpciones = linea.substr(pos + 1);
+
+        nombrePerfil = trim(nombrePerfil);
+
+        // Compara el perfil (insensible a mayúsculas/minúsculas opcionalmente)
+        // Para hacerlo insensible: std::transform(nombrePerfil.begin(), nombrePerfil.end(), nombrePerfil.begin(), ::tolower);
+        // string perfilLower = perfil; std::transform(perfilLower.begin(), perfilLower.end(), perfilLower.begin(), ::tolower);
+        // if (nombrePerfil == perfilLower) { ... }
         if (nombrePerfil == perfil) {
             stringstream ss(listaOpciones);
             string token;
-            while (getline(ss, token, ',')) {
+            while (getline(ss, token, ',')) { // Separa los números por coma
                 try {
-                    opciones.insert(stoi(token));
-                } catch(...) { continue; }
+                    opciones.insert(stoi(token)); // Convierte a entero y añade al set
+                } catch (const exception& e) {
+                    cerr << "Error al convertir token a entero: '" << token << "' - " << e.what() << endl;
+                    continue;
+                }
             }
-            break;
+            break; // Perfil encontrado, no seguir buscando
         }
     }
+
     file.close();
     return opciones;
 }
 
-//conteo de letras y palabras en archivo
+
+// --- Funciones Específicas del Menú (No Modulares) ---
+
 void conteoTexto(const string &filename) {
     if (filename.empty()) {
-        cout << "no se ingreso archivo\n";
+        cout << "No se ingreso ningun archivo con -f.\n";
         return;
     }
 
-    string ruta = "libros/" + filename;
+    // Asume que los libros están en una carpeta relativa "Libros"
+    string ruta = "Libros/" + filename;
     ifstream file(ruta);
     if (!file.is_open()) {
-        cout << "no se pudo abrir archivo: " << ruta << "\n";
+        cout << "No se pudo abrir el archivo en: " << ruta << "\n";
         return;
     }
 
-    int vocales=0, consonantes=0, especiales=0, palabras=0;
-    bool enPalabra=false;
+    int vocales = 0, consonantes = 0, especiales = 0, palabras = 0;
+    bool enPalabra = false;
     string linea;
+
     while (getline(file, linea)) {
         for (char c : linea) {
-            if (isalpha((unsigned char)c)) {
+            if (isalpha(static_cast<unsigned char>(c))) {
                 char lower = tolower(c);
-                if (string("aeiou").find(lower) != string::npos) vocales++;
-                else consonantes++;
-                if (!enPalabra) { palabras++; enPalabra=true; }
-            } else if (isspace((unsigned char)c)) enPalabra=false;
-            else especiales++;
+                if (string("aeiou").find(lower) != string::npos) { // Forma más robusta de contar vocales
+                    vocales++;
+                } else {
+                    consonantes++;
+                }
+                if (!enPalabra) {
+                    palabras++;
+                    enPalabra = true;
+                }
+            } else if (isspace(static_cast<unsigned char>(c))) {
+                enPalabra = false;
+            } else {
+                especiales++;
+            }
         }
+        // Si la línea termina en medio de una palabra, asegúrate de contarla
+        // (Esto se maneja mejor en la lógica original, la mantengo por consistencia)
     }
+
     file.close();
 
-    cout << "archivo: " << ruta << "\n";
-    cout << "vocales: " << vocales << "\n";
-    cout << "consonantes: " << consonantes << "\n";
-    cout << "caracteres especiales: " << especiales << "\n";
-    cout << "palabras: " << palabras << "\n";
+    cout << "\n--- Resumen de conteo en archivo ---\n";
+    cout << "Archivo: " << ruta << "\n";
+    cout << "Vocales: " << vocales << "\n";
+    cout << "Consonantes: " << consonantes << "\n";
+    cout << "Caracteres especiales: " << especiales << "\n";
+    cout << "Palabras: " << palabras << "\n";
 }
 
-//calculo de funcion
 void calcularFuncion() {
-    cout << "calculo f(x) = x*x + 2x + 8\n";
+    cout << "\n--- Calculo de f(x) = x*x + 2x + 8 ---\n";
     double x;
+
     while (true) {
-        cout << "ingrese valor numerico: ";
+        cout << "Ingrese un valor numerico (se aceptan decimales) para x: ";
         cin >> x;
-        if (cin.fail()) { cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n'); cout << "entrada invalida\n"; }
-        else { cin.ignore(numeric_limits<streamsize>::max(), '\n'); break; }
+
+        if (cin.fail()) { // Si la entrada no es un número
+            cin.clear(); // Limpia el estado de error de cin
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Descarta la entrada inválida
+            cout << "Entrada invalida. Intente nuevamente.\n";
+        } else {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Descarta cualquier caracter extra (ej. si se ingresa "5abc")
+            break; // Sale del bucle si la entrada es válida
+        }
     }
-    cout << "f(" << x << ") = " << x*x + 2*x + 8 << "\n";
+
+    double resultado = x*x + 2*x + 8;
+    cout << "f(" << x << ") = " << resultado << "\n";
 }
 
-//inicio juego
+// Placeholder para la opción Juego desde el menú (la acción real es lanzar game_client)
 void iniciarJuego() {
-    cout << "se intentara conectar al cliente del juego\n";
+    cout << "[Juego] Se intentará conectar al cliente del juego.\n";
+    cout << "La lógica principal está en el programa 'game_client'.\n";
+    cout << "Asegúrate de que el servidor 'game_server' esté corriendo.\n";
 }
 
-//multiplicar matrices
+// Placeholder para Multiplicar Matrices (la acción real es lanzar multi_matrices)
 void multiplicarMatrices() {
-    cout << "lanza el programa multi_matrices\n";
+    cout << "[Matrices] Esta opción lanza el programa externo 'multi_matrices'.\n";
 }
 
-//verifica palindromo
+// Verifica si una cadena es palíndromo (ignorando no alfanuméricos y mayúsculas)
 bool isPalindrome(const string &text) {
     string clean;
-    for (char c : text) if (isalnum((unsigned char)c)) clean.push_back(tolower(c));
-    if (clean.empty()) return true;
+    for (char c : text) {
+        if (isalnum(static_cast<unsigned char>(c))) { // Solo letras y números
+            clean.push_back(tolower(c)); // Convertir a minúscula
+        }
+    }
+    if (clean.empty()) return true; // Una cadena vacía o sin alfanuméricos es palíndromo
     string reversed = clean;
-    reverse(reversed.begin(), reversed.end());
-    return clean == reversed;
+    reverse(reversed.begin(), reversed.end()); // Invierte la cadena limpia
+    return clean == reversed; // Compara la original limpia con la invertida
 }
 
-//opcion palindromo
+// Interfaz para la opción Palíndromo
 void opcionPalindromo() {
-    cout << "ingrese texto: ";
+    cout << "\n--- Verificar Palindromo ---\n";
+    cout << "Ingrese un texto: ";
     string texto;
-    getline(cin, texto);
-    if (texto.empty()) { cout << "texto vacio\n"; return; }
-    if (isPalindrome(texto)) cout << "'" << texto << "' es palindromo\n";
-    else cout << "'" << texto << "' no es palindromo\n";
+    getline(cin, texto); // Leer línea completa, incluyendo espacios
+
+    if (texto.empty()) {
+        cout << "Texto vacío, no se puede verificar.\n";
+        return;
+    }
+
+    // Ya no pide subopción, valida directamente
+    if (isPalindrome(texto)) {
+        cout << "'" << texto << "' ES un palindromo.\n";
+    } else {
+        cout << "'" << texto << "' NO es un palindromo.\n";
+    }
+}
+
+// Placeholder para Admin Usuarios (la acción real es lanzar admin)
+void adminUsuarios() {
+    cout << "[ADMIN] Esta opción lanza el programa externo 'admin'.\n";
 }
