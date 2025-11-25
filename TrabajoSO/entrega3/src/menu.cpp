@@ -29,6 +29,7 @@ int main(int argc, char* argv[]) {
     const char* multiMEnv = std::getenv("MULTI_M"); // Corregido el nombre de la variable
     const char* creaIndiceEnv = std::getenv("CREATE_INDEX");
     const char* gameClientEnv = std::getenv("GAME_CLIENT"); // <-- Variable para el cliente del juego
+    const char* benchmarkEnv = std::getenv("BENCHMARK_APP"); 
 
     // Validar que todas las variables de entorno cruciales estén definidas
     // Se añade la validación para gameClientEnv
@@ -45,6 +46,7 @@ int main(int argc, char* argv[]) {
     string pathMulti = multiMEnv;
     string pathCreaIndice = creaIndiceEnv;
     string pathGameClient = gameClientEnv; // <-- Path del cliente
+    string pathBenchmark = (benchmarkEnv) ? benchmarkEnv : "";
 
     // 3. Pedir credenciales si no se proporcionaron por argumentos
     if (usuario.empty() || password.empty()) {
@@ -90,9 +92,8 @@ int main(int argc, char* argv[]) {
         if (opcionesDisponibles.count(5)) cout << "5) Calcular f(x) = x*x + 2x + 8\n";
         if (opcionesDisponibles.count(6)) cout << "6) Conteo sobre texto\n";
         if (opcionesDisponibles.count(7)) cout << "7) Crea indice invertido\n";
-        // --- NUEVA OPCIÓN PARA EL JUEGO ---
-        if (opcionesDisponibles.count(8)) cout << "8) Crea inidce invertido paralelo\n"; // Asumiendo que 8 es la opción del juego
-        // --- FIN NUEVA OPCIÓN ---
+        if (opcionesDisponibles.count(8)) cout << "8) Crea inidce invertido paralelo\n"; 
+        if (opcionesDisponibles.count(9)) cout << "9) Analisis de Rendimiento (Threads)\n";
         cout << "0) Salir\n";
         cout << "Seleccione una opcion: ";
 
@@ -208,6 +209,15 @@ int main(int argc, char* argv[]) {
                 string carpeta = "Libros";     
                 string comando = string(prog) + " " + salidaIdx + " " + carpeta;
                 system(comando.c_str());
+                break;
+            }
+            case 9: {
+                if (pathBenchmark.empty()) {
+                    cerr << "Error: La variable de entorno BENCHMARK_APP no esta definida.\n";
+                } else {
+                    cout << "Iniciando Análisis de Rendimiento...\n";
+                    system(pathBenchmark.c_str());
+                }
                 break;
             }
             // --- FIN NUEVO CASE ---
