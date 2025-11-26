@@ -16,6 +16,7 @@
 #include <random>
 #include <stdexcept>
 #include <ctime> // Para srand() y time() si se usa rand() simple
+#include <fstream> // Necesaria para manejar archivos (logging)
 
 using namespace std;
 
@@ -46,15 +47,73 @@ struct Team {
     int position = 0; // Posición actual del equipo en el tablero
 };
 
-map<int, Player> players;         // Mapa de ID de jugador -> Datos del jugador
+// --- ESTRUCTURAS GLOBALES PARA LOGGING Y TIEMPO ---
 map<string, Team> teams;          // Mapa de Nombre de equipo -> Datos del equipo
+map<int, Player> players;         // Mapa de ID de jugador -> Datos del jugador
 mutex global_mtx;                 // Mutex para proteger el acceso a 'players' y 'teams'
 int nextPlayerId = 1;             // Contador para asignar IDs únicos a los jugadores
 atomic<int> running{1};           // Bandera para detener el servidor
 int currentPlayerTurnId = 0;      // ID del jugador que tiene el turno (0 si nadie)
 vector<int> playerOrder;          // Orden de los jugadores para los turnos
 
-// --- FUNCIONES DE UTILIDAD ---
+time_t gameStartTime;             // Tiempo en que inició la partida actual
+int partidaCounter = 0;           // Contador para asignar ID a la partida
+
+struct GameResult {
+    int partida_id;
+    int duracion_seg; 
+    int n_equipos;
+    int n_jugadores_totales;
+    string equipo_ganador;
+    int posicion_final_ganador; 
+    int n_turnos;
+};
+int turnCounter = 0; // Contador de turnos para el log
+
+// --------------------------------------------------------------------------------
+// --- FUNCIÓN DE LOGGING (PROBLEMA 2.B) ---
+// --------------------------------------------------------------------------------
+
+void registrar_partida_log(const GameResult& result) {
+    
+    // Obtener la ruta del archivo del entorno
+    const char* log_file_path = std::getenv("GAME_LOG_FILE");
+    if (!log_file_path) {
+        std::cerr << "ERROR: Variable de entorno GAME_LOG_FILE no definida. Ejecute 'source setup'." << std::endl;
+        return;
+    }
+
+    // Abrir archivo en modo append (ios::app)
+    std::fstream log_file(log_file_path, std::ios::out | std::ios::app);
+    if (!log_file.is_open()) {
+        std::cerr << "ERROR: No se pudo abrir el archivo de log: " << log_file_path << std::endl;
+        return;
+    }
+
+    // 1. Escribir encabezado si el archivo está vacío
+    log_file.seekp(0, std::ios::end); 
+    if (log_file.tellp() == 0) {
+        log_file << "timestamp,partida_id,duracion_seg,n_equipos,n_jugadores_totales,equipo_ganador,posicion_final_ganador,n_turnos\n";
+    }
+
+    // 2. Escribir los datos de la partida
+    std::time_t timestamp = std::time(nullptr);
+    log_file << timestamp << "," 
+             << result.partida_id << "," 
+             << result.duracion_seg << "," 
+             << result.n_equipos << "," 
+             << result.n_jugadores_totales << "," 
+             << result.equipo_ganador << "," 
+             << result.posicion_final_ganador << "," 
+             << result.n_turnos << "\n";
+
+    log_file.close();
+    std::cout << "Partida registrada en el log: " << log_file_path << std::endl;
+}
+
+// --------------------------------------------------------------------------------
+// --- RESTO DEL CÓDIGO ---
+// --------------------------------------------------------------------------------
 
 // Divide una cadena por un delimitador
 vector<string> split(const string &s, char delim) {
@@ -93,7 +152,7 @@ bool checkGameStartCondition() {
     return true; // Si ambas condiciones se cumplen
 }
 
-// Establece el orden inicial de los jugadores para los turnos
+// Establece el orden inicial de los jugadores para los turnos e inicializa el tiempo/contador
 void setupPlayerOrder() {
     playerOrder.clear();
     for(const auto& [id, player] : players) {
@@ -101,6 +160,9 @@ void setupPlayerOrder() {
     }
     if (!playerOrder.empty()) {
         currentPlayerTurnId = playerOrder[0]; // El primer jugador tiene el turno
+        gameStartTime = time(nullptr); // Iniciar el contador de tiempo de la partida
+        partidaCounter++; // Incrementar el ID de la partida
+        turnCounter = 0; // Resetear el contador de turnos
     } else {
         currentPlayerTurnId = 0; // Nadie tiene el turno si no hay jugadores
     }
@@ -125,6 +187,7 @@ void advanceTurn() {
         size_t nextIndex = (currentIndex + 1) % playerOrder.size();
         currentPlayerTurnId = playerOrder[nextIndex];
     }
+    turnCounter++; // Incrementar contador de turnos
     
     // Notificar quién tiene el turno (mensaje claro) 
     string turnMsg = "TURN;" + to_string(currentPlayerTurnId) + ";" + players[currentPlayerTurnId].name + "\n";
@@ -219,7 +282,7 @@ void handle_client(int client_fd) {
                         setupPlayerOrder(); 
                         startMsg = "GAME_STATE;PLAYING;El juego ha comenzado! Tablero: " + to_string(GAME_BOARD_X) +
                                           " pos. Victoria al superar: " + to_string(POS_VICTORIA_C) +
-                                          ". Turno de: " + players[currentPlayerTurnId].name + "\n";
+                                          ". Turno de: " + players[currentPlayerTurnId].name + ". Partida ID: " + to_string(partidaCounter) + "\n";
                     }
                 }
             } // Fin del bloque lock_guard
@@ -293,8 +356,28 @@ void handle_client(int client_fd) {
                 broadcast(updateMsg);
 
                 if (gameFinished) {
+                    // --- INTEGRACIÓN DEL LOGGING (Problema 2.B) ---
+                    time_t gameEndTime = time(nullptr);
+                    GameResult logResult = {
+                        partidaCounter,
+                        (int)difftime(gameEndTime, gameStartTime),
+                        (int)teams.size(),
+                        (int)players.size(),
+                        winnerTeam,
+                        currentTeamPos,
+                        turnCounter + 1 // El turno actual cuenta
+                    };
+                    registrar_partida_log(logResult);
+                    // --------------------------------------------------
+
                     string endMsg = "GAME_OVER;WINNER;" + winnerTeam + ";Felicidades al equipo " + winnerTeam + "!\n";
                     broadcast(endMsg);
+                    
+                    // Resetear para la siguiente partida
+                    currentPlayerTurnId = 0;
+                    playerOrder.clear();
+                    // No reseteamos el estado a WAITING aquí, para que el servidor 
+                    // sepa que la partida terminó. Se resetea en JOIN o LEAVE.
                 } 
                 else if (advanceTurnCalled) {
                     advanceTurn();
@@ -358,6 +441,9 @@ void handle_client(int client_fd) {
              playerOrder.clear();
              disconnectBroadcastMsg = "GAME_STATE;WAITING;Un jugador se fue y ya no se cumple la condición de inicio. Esperando jugadores...\n";
          }
+         else if (currentState == FINISHED) {
+             currentState = WAITING; // Si estaba en FINISHED y el ganador se fue, se puede resetear.
+         }
 
     } // Fin del bloque lock_guard
 
@@ -375,6 +461,17 @@ void handle_client(int client_fd) {
 // Carga la configuración del juego (X, C, R, Min/Max) desde variables de entorno
 void load_env_config() {
  
+    // --- Valores por defecto (ajustados a un juego de ejemplo si ENV no está) ---
+    PORT = 4000;
+    GAME_BOARD_X = 50;
+    POS_VICTORIA_C = 45;
+    DICE_SIDES = 6;
+    MIN_TEAMS = 2;
+    MAX_TEAMS = 4;
+    MIN_PLAYERS = 1;
+    MAX_PLAYERS = 3;
+    // ---------------------------------------------------------------------------
+
     cout << "Cargando configuración desde variables de entorno...\n";
     if (const char* env_x = getenv("GAME_BOARD_X")) GAME_BOARD_X = atoi(env_x); else cout << "WARN: GAME_BOARD_X no definida, usando por defecto: " << GAME_BOARD_X << endl;
     if (const char* env_c = getenv("POS_VICTORIA_C")) POS_VICTORIA_C = atoi(env_c); else cout << "WARN: POS_VICTORIA_C no definida, usando por defecto: " << POS_VICTORIA_C << endl;

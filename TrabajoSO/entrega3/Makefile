@@ -5,6 +5,8 @@ cxxflags = -Wall -std=c++17 -Iinclude -pthread -O2
 #carpetas
 src_dir = src
 bin_dir = bin
+log_dir = logs
+stats_dir = stats
 
 #nombres de ejecutables
 exec_menu = menu
@@ -12,11 +14,11 @@ exec_admin = admin
 exec_multi_matrices = multi_matrices
 exec_crea_idx = creaidx
 exec_crea_indice = creaindiceinvertido
-exec_crea_indice_par = creaindiceinvertidoparalelo
+exec_crea_indice_par = creaIndiceInvertidoParalelo
 exec_game_server = game_server
 exec_game_client = game_client
-# NUEVO: Nombre del ejecutable del benchmark
 exec_benchmark = benchmark
+exec_stats = stats_generator.py
 
 #rutas completas de ejecutables
 target_menu = $(bin_dir)/$(exec_menu)
@@ -27,18 +29,17 @@ target_crea_indice = $(bin_dir)/$(exec_crea_indice)
 target_crea_indice_par = $(bin_dir)/$(exec_crea_indice_par)
 target_game_server = $(bin_dir)/$(exec_game_server)
 target_game_client = $(bin_dir)/$(exec_game_client)
-# NUEVO: Ruta completa del benchmark
 target_benchmark = $(bin_dir)/$(exec_benchmark)
 
-#regla principal: compilar todo (AGREGADO target_benchmark)
+#regla principal: compilar todo
 all: $(target_menu) $(target_admin) $(target_multi_matrices) \
      $(target_crea_idx) $(target_crea_indice) $(target_crea_indice_par) \
      $(target_game_server) $(target_game_client) $(target_benchmark)
 	@echo "todos los ejecutables han sido compilados"
 
-#crear carpeta bin si no existe
-$(bin_dir):
-	mkdir -p $(bin_dir)
+#crear carpetas bin, logs y stats si no existen
+$(bin_dir) $(log_dir) $(stats_dir):
+	mkdir -p $@
 
 #reglas individuales de compilacion
 $(target_menu): $(src_dir)/menu.cpp $(src_dir)/utils.cpp | $(bin_dir)
@@ -50,29 +51,39 @@ $(target_admin): $(src_dir)/main.cpp $(src_dir)/utils.cpp | $(bin_dir)
 $(target_multi_matrices): $(src_dir)/multiplica_mat.cpp | $(bin_dir)
 	$(cxx) $(cxxflags) $< -o $@
 
-$(target_crea_idx): $(src_dir)/crear_idx.cpp | $(bin_dir)
+$(target_crea_idx): $(src_dir)/crear_IDX.cpp | $(bin_dir)
 	$(cxx) $(cxxflags) $< -o $@
 
 $(target_crea_indice): $(src_dir)/crear_indice_invertido.cpp | $(bin_dir)
 	$(cxx) $(cxxflags) $< -o $@
 
-#nueva: creaindiceinvertidoparalelo (usa hilos)
 $(target_crea_indice_par): $(src_dir)/crea_indice_invertido_paralelo.cpp | $(bin_dir)
 	$(cxx) $(cxxflags) $< -o $@
 
-$(target_game_server): $(src_dir)/game_server.cpp | $(bin_dir)
+# CORRECCIÓN 1: El servidor necesita la carpeta logs antes de ejecutarse
+$(target_game_server): $(src_dir)/game_server.cpp | $(bin_dir) $(log_dir)
 	$(cxx) $(cxxflags) $< -o $@
 
 $(target_game_client): $(src_dir)/game_client.cpp | $(bin_dir)
 	$(cxx) $(cxxflags) $< -o $@
 
-# NUEVO: Regla para compilar el benchmark runner
-$(target_benchmark): $(src_dir)/benchmark_runner.cpp | $(bin_dir)
+# CORRECCIÓN 2: El benchmark necesita la carpeta stats antes de ejecutarse
+$(target_benchmark): $(src_dir)/benchmark_runner.cpp | $(bin_dir) $(stats_dir)
 	$(cxx) $(cxxflags) $< -o $@
 
-#limpiar binarios
+#limpiar binarios, logs y estadísticas (solo el contenido de las carpetas)
 clean:
+	# Borra el contenido de bin/
 	rm -f $(bin_dir)/*
+
+	# Borra el contenido de logs/
+	rm -f $(log_dir)/*
+
+	# Borra el contenido de stats/
+
+	rm -f $(stats_dir)/*
+
+	@echo "Limpieza completada: Se borró el contenido de bin/, logs/ y stats/."
 
 #cargar variables de entorno (AGREGADAS LAS VARIABLES NUEVAS)
 setup:
@@ -98,8 +109,13 @@ setup:
 	@echo "export MAX_TEAMS=4"
 	@echo "export MIN_PLAYERS=2"
 	@echo "export MAX_PLAYERS=5"
+	@echo "export GAME_LOG_FILE=\"$(log_dir)/game_log.csv\""
 	@echo ""
-	@echo "#variables de benchmark (Problema 2)"
+	@echo "#variables de estadisticas (Problema 2.B)"
+	@echo "export STATS_APP=\"python3 $(src_dir)/$(exec_stats)\""
+	@echo "export STATS_OUTPUT_DIR=\"$(stats_dir)/game_plots\""
+	@echo ""
+	@echo "#variables de benchmark (Problema 2.A)"
 	@echo "export BENCHMARK_APP=\"$(target_benchmark)\""
 	@echo "export PLOT_SCRIPT=\"src/plot_performance.py\""
 	@echo "export STATS_FOLDER=\"stats\""
