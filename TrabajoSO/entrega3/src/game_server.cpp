@@ -15,107 +15,86 @@
 #include <algorithm>
 #include <random>
 #include <stdexcept>
-#include <ctime> // Para srand() y time() si se usa rand() simple
-#include <fstream> // Necesaria para manejar archivos (logging)
+#include <ctime>
+#include <fstream>
 
 using namespace std;
 
-// --- VARIABLES CONFIGURABLES DEL JUEGO (LEÍDAS DE ENV) ---
-    int PORT;
-    int GAME_BOARD_X;      // Tablero de X posiciones 
-    int POS_VICTORIA_C;    // Condición para ganar (sobrepasar C posiciones) 
-    int DICE_SIDES;         // Dado de R caras (valor máximo) 
-    int MIN_TEAMS;          // Mínima cantidad de equipos para iniciar 
-    int MAX_TEAMS;          // Máxima cantidad de equipos permitidos 
-    int MIN_PLAYERS;        // Mínimo de jugadores por equipo para iniciar
-    int MAX_PLAYERS; 
+// --------------------------------------------
+// VARIABLES DE CONFIGURACIÓN
+// --------------------------------------------
+int PORT;
+int GAME_BOARD_X;
+int POS_VICTORIA_C;
+int DICE_SIDES;
+int MIN_TEAMS;
+int MAX_TEAMS;
+int MIN_PLAYERS;
+int MAX_PLAYERS;
 
-// --- ESTRUCTURAS Y ESTADOS GLOBALES ---
 enum GameState { WAITING, PLAYING, FINISHED };
-atomic<GameState> currentState{WAITING}; // Estado inicial: esperando jugadores
+atomic<GameState> currentState{WAITING};
 
 struct Player {
     int id;
     string name;
-    int fd; // File descriptor del socket del cliente
+    int fd;
     string team;
 };
 
 struct Team {
     string name;
-    vector<int> members; // IDs de los jugadores en el equipo
-    int position = 0; // Posición actual del equipo en el tablero
+    vector<int> members;
+    int position = 0;
 };
 
-// --- ESTRUCTURAS GLOBALES PARA LOGGING Y TIEMPO ---
-map<string, Team> teams;          // Mapa de Nombre de equipo -> Datos del equipo
-map<int, Player> players;         // Mapa de ID de jugador -> Datos del jugador
-mutex global_mtx;                 // Mutex para proteger el acceso a 'players' y 'teams'
-int nextPlayerId = 1;             // Contador para asignar IDs únicos a los jugadores
-atomic<int> running{1};           // Bandera para detener el servidor
-int currentPlayerTurnId = 0;      // ID del jugador que tiene el turno (0 si nadie)
-vector<int> playerOrder;          // Orden de los jugadores para los turnos
+map<string, Team> teams;
+map<int, Player> players;
+mutex global_mtx;
+int nextPlayerId = 1;
+atomic<int> running{1};
+int currentPlayerTurnId = 0;
+vector<int> playerOrder;
 
-time_t gameStartTime;             // Tiempo en que inició la partida actual
-int partidaCounter = 0;           // Contador para asignar ID a la partida
+time_t gameStartTime;
+int partidaCounter = 0;
+int turnCounter = 0;
+time_t turnoStartTime = 0;
 
 struct GameResult {
     int partida_id;
-    int duracion_seg; 
+    int duracion_seg;
     int n_equipos;
     int n_jugadores_totales;
     string equipo_ganador;
-    int posicion_final_ganador; 
+    int posicion_final_ganador;
     int n_turnos;
 };
-int turnCounter = 0; // Contador de turnos para el log
 
-// --------------------------------------------------------------------------------
-// --- FUNCIÓN DE LOGGING (PROBLEMA 2.B) ---
-// --------------------------------------------------------------------------------
-
-void registrar_partida_log(const GameResult& result) {
-    
-    // Obtener la ruta del archivo del entorno
-    const char* log_file_path = std::getenv("GAME_LOG_FILE");
-    if (!log_file_path) {
-        std::cerr << "ERROR: Variable de entorno GAME_LOG_FILE no definida. Ejecute 'source setup'." << std::endl;
+// -------------------------------------------------------
+// NUEVO: Ejecuta stats_generator.py automáticamente
+// -------------------------------------------------------
+void ejecutar_stats() {
+    const char* stats_cmd = getenv("STATS_APP");
+    if (!stats_cmd) {
+        cerr << "WARN: STATS_APP no definida; no se generan gráficos.\n";
         return;
     }
 
-    // Abrir archivo en modo append (ios::app)
-    std::fstream log_file(log_file_path, std::ios::out | std::ios::app);
-    if (!log_file.is_open()) {
-        std::cerr << "ERROR: No se pudo abrir el archivo de log: " << log_file_path << std::endl;
-        return;
-    }
+    cout << "Ejecutando script de estadísticas...\n";
 
-    // 1. Escribir encabezado si el archivo está vacío
-    log_file.seekp(0, std::ios::end); 
-    if (log_file.tellp() == 0) {
-        log_file << "timestamp,partida_id,duracion_seg,n_equipos,n_jugadores_totales,equipo_ganador,posicion_final_ganador,n_turnos\n";
-    }
+    string fullcmd = string(stats_cmd);
+    int rc = system(fullcmd.c_str());
 
-    // 2. Escribir los datos de la partida
-    std::time_t timestamp = std::time(nullptr);
-    log_file << timestamp << "," 
-             << result.partida_id << "," 
-             << result.duracion_seg << "," 
-             << result.n_equipos << "," 
-             << result.n_jugadores_totales << "," 
-             << result.equipo_ganador << "," 
-             << result.posicion_final_ganador << "," 
-             << result.n_turnos << "\n";
-
-    log_file.close();
-    std::cout << "Partida registrada en el log: " << log_file_path << std::endl;
+    if (rc != 0)
+        cerr << "ERROR: stats_generator.py terminó con código " << rc << "\n";
+    else
+        cout << "✔ Gráficos generados exitosamente.\n";
 }
-
 // --------------------------------------------------------------------------------
-// --- RESTO DEL CÓDIGO ---
+// --- FUNCIONES AUXILIARES: SPLIT / BROADCAST / DADO ---
 // --------------------------------------------------------------------------------
 
-// Divide una cadena por un delimitador
 vector<string> split(const string &s, char delim) {
     vector<string> out;
     string token; stringstream ss(s);
@@ -125,7 +104,6 @@ vector<string> split(const string &s, char delim) {
     return out;
 }
 
-// Envía un mensaje a todos los clientes conectados
 void broadcast(const string &msg) {
     lock_guard<mutex> lk(global_mtx);
     for (auto const& [id, player] : players) {
@@ -133,335 +111,365 @@ void broadcast(const string &msg) {
     }
 }
 
-// Simula el lanzamiento de un dado de R caras (DICE_SIDES) 
 int rollDice() {
-    static mt19937 gen(time(0)); // Usar time(0) como semilla
-    uniform_int_distribution<> dis(1, DICE_SIDES); // Distribución [1, R] 
+    static mt19937 gen(time(0));
+    uniform_int_distribution<> dis(1, DICE_SIDES);
     return dis(gen);
 }
 
-// Verifica si se cumple la condición de inicio del juego (Premisa 4)
-bool checkGameStartCondition() {
-    // Necesita al menos MIN_TEAMS equipos 
-    if (teams.size() < static_cast<size_t>(MIN_TEAMS)) return false; 
+// --------------------------------------------------------------------------------
+// --- VERIFICAR CONDICIONES DE INICIO + MANEJO DE TURNOS ---
+// --------------------------------------------------------------------------------
 
-    // Cada equipo debe tener al menos MIN_PLAYERS jugadores 
-    for (auto const& [name, team] : teams) {
-        if (team.members.size() < static_cast<size_t>(MIN_PLAYERS)) return false; 
-    }
-    return true; // Si ambas condiciones se cumplen
+bool checkGameStartCondition() {
+    if (teams.size() < (size_t)MIN_TEAMS) return false;
+
+    for (auto const& [name, team] : teams)
+        if (team.members.size() < (size_t)MIN_PLAYERS)
+            return false;
+
+    return true;
 }
 
-// Establece el orden inicial de los jugadores para los turnos e inicializa el tiempo/contador
 void setupPlayerOrder() {
     playerOrder.clear();
-    for(const auto& [id, player] : players) {
+    for (const auto& [id, player] : players)
         playerOrder.push_back(id);
-    }
+
     if (!playerOrder.empty()) {
-        currentPlayerTurnId = playerOrder[0]; // El primer jugador tiene el turno
-        gameStartTime = time(nullptr); // Iniciar el contador de tiempo de la partida
-        partidaCounter++; // Incrementar el ID de la partida
-        turnCounter = 0; // Resetear el contador de turnos
-    } else {
-        currentPlayerTurnId = 0; // Nadie tiene el turno si no hay jugadores
+        currentPlayerTurnId = playerOrder[0];
+        gameStartTime = time(nullptr);
+        partidaCounter++;
+        turnCounter = 0;
     }
 }
 
-// Avanza el turno al siguiente jugador en la lista
 void advanceTurn() {
-    if (playerOrder.empty() || currentPlayerTurnId == 0) return; 
+    if (playerOrder.empty() || currentPlayerTurnId == 0) return;
 
-    // Encontrar el índice del jugador actual en el orden
     auto it = find(playerOrder.begin(), playerOrder.end(), currentPlayerTurnId);
-    if (it == playerOrder.end()) { 
-        if (!playerOrder.empty()) {
-             currentPlayerTurnId = playerOrder[0];
-        } else {
-             currentPlayerTurnId = 0; 
-             return; 
-        }
+
+    if (it == playerOrder.end()) {
+        currentPlayerTurnId = playerOrder.empty() ? 0 : playerOrder[0];
     } else {
-        // Avanzar al siguiente índice de forma circular
-        size_t currentIndex = distance(playerOrder.begin(), it);
-        size_t nextIndex = (currentIndex + 1) % playerOrder.size();
-        currentPlayerTurnId = playerOrder[nextIndex];
+        size_t index = distance(playerOrder.begin(), it);
+        currentPlayerTurnId = playerOrder[(index + 1) % playerOrder.size()];
     }
-    turnCounter++; // Incrementar contador de turnos
-    
-    // Notificar quién tiene el turno (mensaje claro) 
-    string turnMsg = "TURN;" + to_string(currentPlayerTurnId) + ";" + players[currentPlayerTurnId].name + "\n";
-    broadcast(turnMsg);
+
+    turnCounter++;
+
+    // Registrar inicio real del nuevo turno
+    turnoStartTime = time(nullptr);
+
+    string msg = "TURN;" + to_string(currentPlayerTurnId) + ";" +
+                 players[currentPlayerTurnId].name + "\n";
+    broadcast(msg);
 }
 
-// --- MANEJADOR DE CLIENTE (THREAD POR CADA JUGADOR) ---
+// --------------------------------------------------------------------------------
+// --- GENERAR ESTADÍSTICAS AUTOMÁTICAMENTE ---
+// --------------------------------------------------------------------------------
+
+void ejecutar_stats_generator() {
+    const char* stats_app = getenv("STATS_APP");
+
+    if (!stats_app) {
+        cerr << "ADVERTENCIA: STATS_APP no está definida. No se generarán estadísticas.\n";
+        return;
+    }
+
+    cout << "[STATS] Ejecutando generador: " << stats_app << endl;
+
+    int ret = system(stats_app);
+    if (ret != 0) {
+        cerr << "ERROR: Falló la ejecución de stats_generator.py (code " << ret << ")\n";
+    }
+}
+
+// --------------------------------------------------------------------------------
+// --- MANEJADOR DE CLIENTES ---
+// --------------------------------------------------------------------------------
+
 void handle_client(int client_fd) {
     int myId;
     string myName = "anon";
     string myTeam = "";
 
-    // Asignar ID único al nuevo jugador
-    {
-        lock_guard<mutex> lk(global_mtx);
+    {   lock_guard<mutex> lk(global_mtx);
         myId = nextPlayerId++;
-        players[myId] = Player{myId, myName, client_fd, ""}; 
+        players[myId] = Player{myId, myName, client_fd, ""};
     }
 
-    // Enviar mensaje de bienvenida con el ID asignado
-    string welcome = "WELCOME;" + to_string(myId) + ";Bienvenido! Usa JOIN;nombre;equipo para unirte.\n";
+    string welcome = "WELCOME;" + to_string(myId) +
+                     ";Bienvenido! Usa JOIN;nombre;equipo para unirte.\n";
     send(client_fd, welcome.c_str(), welcome.size(), 0);
 
-    char buf[2048]; // Buffer para recibir mensajes
+    char buf[2048];
 
-    // Bucle principal para recibir comandos del cliente
+    // --------------------------- LOOP PRINCIPAL DEL JUGADOR --------------------------
     while (running) {
         memset(buf, 0, sizeof(buf));
-        ssize_t bytes_received = recv(client_fd, buf, sizeof(buf) - 1, 0);
-
-        if (bytes_received <= 0) {
-            if (bytes_received == 0) cout << "Jugador " << myId << " (" << myName << ") se desconectó.\n";
-            else if (running) perror("recv failed"); 
-            break;
-        }
-        
-        buf[bytes_received] = '\0'; 
+        ssize_t br = recv(client_fd, buf, sizeof(buf)-1, 0);
+        if (br <= 0) break;
 
         string msg(buf);
-        
-        while (!msg.empty() && (msg.back() == '\n' || msg.back() == '\r')) {
-            msg.pop_back();
-        }
-        
+        msg.erase(remove(msg.begin(), msg.end(), '\n'), msg.end());
+        msg.erase(remove(msg.begin(), msg.end(), '\r'), msg.end());
+
         auto parts = split(msg, ';');
         if (parts.empty()) continue;
 
         string cmd = parts[0];
 
-        // --- Procesamiento de Comandos ---
-
-        if (cmd == "JOIN") { 
+        // ---------------------------- CMD JOIN ----------------------------
+        if (cmd == "JOIN") {
             if (parts.size() < 3) {
-                send(client_fd, "ERROR;Formato incorrecto. Usa JOIN;nombre;equipo\n", 49, 0);
+                send(client_fd,
+                     "ERROR;Formato JOIN incorrecto\n",
+                     30, 0);
                 continue;
             }
+
             string username = parts[1];
             string teamName = parts[2];
-            string status = "OK"; 
-            string startMsg = ""; 
+            string status = "OK";
+            string startMsg = "";
 
-            if (!myTeam.empty()) { 
-                status = "ERROR;Ya estás en el equipo " + myTeam + ". Usa LEAVE primero si quieres cambiar.\n";
-            } else if (currentState != WAITING) { 
-                 status = "ERROR;El juego ya ha comenzado, no puedes unirte ahora.\n";
+            if (!myTeam.empty()) {
+                status = "ERROR;Ya estás en un equipo.\n";
             }
-             else { 
+            else if (currentState != WAITING) {
+                status = "ERROR;El juego ya empezó.\n";
+            }
+            else {
                 lock_guard<mutex> lk(global_mtx);
 
-                if (teams.find(teamName) == teams.end() && teams.size() >= static_cast<size_t>(MAX_TEAMS)) { 
-                    status = "ERROR;Se alcanzó el máximo de equipos (" + to_string(MAX_TEAMS) + "). Intenta unirte a uno existente.\n";
-                }
-                else if (teams.count(teamName) && teams[teamName].members.size() >= static_cast<size_t>(MAX_PLAYERS)) { 
-                    status = "ERROR;El equipo '" + teamName + "' está lleno (máx " + to_string(MAX_PLAYERS) + ").\n";
-                }
+                if (!teams.count(teamName) && teams.size() >= (size_t)MAX_TEAMS)
+                    status = "ERROR;Máximo de equipos alcanzado.\n";
+
+                else if (teams.count(teamName) &&
+                         teams[teamName].members.size() >= (size_t)MAX_PLAYERS)
+                    status = "ERROR;Ese equipo está lleno.\n";
+
                 else {
                     myName = username;
                     myTeam = teamName;
                     players[myId].name = myName;
                     players[myId].team = myTeam;
 
-                    if (teams.find(teamName) == teams.end()) {
-                        teams[teamName] = Team{teamName, {}, 0};
-                        cout << "Equipo '" << teamName << "' creado.\n";
-                    }
+                    if (!teams.count(teamName))
+                        teams[teamName] = Team{teamName};
+
                     teams[teamName].members.push_back(myId);
 
-                    cout << "Jugador " << myId << " (" << myName << ") se unió al equipo '" << myTeam << "'. Total en equipo: " << teams[myTeam].members.size() << "\n";
-
-                    if (currentState == WAITING && checkGameStartCondition()) {
-                        currentState = PLAYING; 
-                        setupPlayerOrder(); 
-                        startMsg = "GAME_STATE;PLAYING;El juego ha comenzado! Tablero: " + to_string(GAME_BOARD_X) +
-                                          " pos. Victoria al superar: " + to_string(POS_VICTORIA_C) +
-                                          ". Turno de: " + players[currentPlayerTurnId].name + ". Partida ID: " + to_string(partidaCounter) + "\n";
+                    if (checkGameStartCondition() && currentState == WAITING) {
+                        currentState = PLAYING;
+                        setupPlayerOrder();
+                        turnoStartTime = time(nullptr);
+                        startMsg = "GAME_STATE;PLAYING;INICIO;Turno de:" +
+                                   players[currentPlayerTurnId].name + "\n";
                     }
                 }
-            } // Fin del bloque lock_guard
+            }
 
-            // Enviar respuesta al cliente
             if (status == "OK") {
-                 string reply = "JOINED;" + myName + ";" + myTeam + "\n";
-                 send(client_fd, reply.c_str(), reply.size(), 0);
-                 string broadcast_msg = "PLAYER_JOINED;" + to_string(myId) + ";" + myName + ";" + myTeam + "\n";
-                 broadcast(broadcast_msg); 
+                string reply = "JOINED;" + myName + ";" + myTeam + "\n";
+                send(client_fd, reply.c_str(), reply.size(), 0);
+
+                string bmsg =
+                    "PLAYER_JOINED;" + to_string(myId) + ";" +
+                    myName + ";" + myTeam + "\n";
+                broadcast(bmsg);
+
+                if (!startMsg.empty())
+                    broadcast(startMsg);
             } else {
-                 send(client_fd, (status + "\n").c_str(), status.size() + 1, 0); 
+                send(client_fd, status.c_str(), status.size(), 0);
             }
+        }
 
-            
-            if (!startMsg.empty()) {
-                broadcast(startMsg);
-            }
+        // --------------------------------------------------------------------------------
+        // --------------------------- CMD ROLL (Tirar dado) ------------------------------
+        // --------------------------------------------------------------------------------
+        else if (cmd == "ROLL") {
 
-        } else if (cmd == "ROLL") { 
-            string errorMsg = "";
+            string err = "";
+            string teamName = "";
             int diceValue = 0;
-            string currentTeamName = "";
-            int currentTeamPos = 0;
-            bool gameFinished = false;
-            string winnerTeam = "";
-            bool advanceTurnCalled = false; 
+            int newPos = 0;
+            bool finished = false;
+            string winner = "";
 
-            { // Bloque protegido
+            long long turnoEndTimestamp = 0;
+
+            {
                 lock_guard<mutex> lk(global_mtx);
 
-                if (currentState != PLAYING) {
-                    errorMsg = "ERROR;El juego no ha comenzado o ya terminó.\n";
-                }
-                else if (myId != currentPlayerTurnId) {
-                    errorMsg = "ERROR;No es tu turno. Espera a " + (players.count(currentPlayerTurnId) ? players[currentPlayerTurnId].name : "...") + ".\n";
-                }
+                if (currentState != PLAYING)
+                    err = "ERROR;No se está jugando.\n";
+
+                else if (myId != currentPlayerTurnId)
+                    err = "ERROR;No es tu turno.\n";
+
                 else {
-                    diceValue = rollDice(); 
-                    currentTeamName = players[myId].team;
 
-                    if (!currentTeamName.empty() && teams.count(currentTeamName)) {
-                        teams[currentTeamName].position += diceValue; 
-                        currentTeamPos = teams[currentTeamName].position;
+                    // ===========================
+                    // 1) Tiempo fin del turno
+                    // ===========================
+                    turnoEndTimestamp = time(nullptr);
 
-                        cout << "Jugador " << myId << " (" << myName << ") del equipo '" << currentTeamName
-                             << "' sacó " << diceValue << ". Posición del equipo: " << currentTeamPos << endl;
+                    // ===========================
+                    // 2) Tirar dado
+                    // ===========================
+                    diceValue = rollDice();
+                    teamName = players[myId].team;
 
-                        if (currentTeamPos > POS_VICTORIA_C) {
-                            currentState = FINISHED; 
-                            gameFinished = true;
-                            winnerTeam = currentTeamName;
-                            cout << "¡Equipo '" << winnerTeam << "' ha ganado al superar " << POS_VICTORIA_C << "!\n";
-                        } else {
-                            advanceTurnCalled = true;
+                    // ===========================
+                    // 3) Posición ANTES de sumar
+                    // ===========================
+                    int posAntes = teams[teamName].position;
+
+                    // ===========================
+                    // 4) Registrar en log
+                    // ===========================
+                    const char* log_file_path = getenv("GAME_LOG_FILE");
+                    if (log_file_path) {
+                        ofstream log(log_file_path, ios::app);
+
+                        // Si el archivo está vacío → escribir encabezado
+                        log.seekp(0, ios::end);
+                        if (log.tellp() == 0) {
+                            log << "turno_id,jugador_id,jugador_nombre,equipo,avance,posicion_acumulada,timestamp_inicio,timestamp_fin\n";
                         }
-                    } else {
-                        errorMsg = "ERROR;No perteneces a un equipo válido para tirar.\n";
+
+                        log << (turnCounter + 1) << ","
+                            << myId << ","
+                            << myName << ","
+                            << teamName << ","
+                            << diceValue << ","
+                            << posAntes << ","
+                            << turnoStartTime << ","
+                            << turnoEndTimestamp << "\n";
+                    }
+
+                    // ===========================
+                    // 5) Actualizar posición
+                    // ===========================
+                    teams[teamName].position += diceValue;
+                    newPos = teams[teamName].position;
+
+                    // ===========================
+                    // 6) Verificar victoria
+                    // ===========================
+                    if (newPos > POS_VICTORIA_C) {
+                        finished = true;
+                        winner = teamName;
+                        currentState = FINISHED;
                     }
                 }
-            } 
+            } // ← ESTA llave FALTABA en tu código
 
-            // Enviar mensajes fuera del bloqueo
-            if (!errorMsg.empty()) {
-                send(client_fd, errorMsg.c_str(), errorMsg.size(), 0); 
-            } else {
-                string resultMsg = "ROLL_RESULT;" + to_string(myId) + ";" + myName + ";" + currentTeamName + ";" + to_string(diceValue) + "\n";
-                broadcast(resultMsg);
-
-                string updateMsg = "TEAM_UPDATE;" + currentTeamName + ";" + to_string(currentTeamPos) + "\n";
-                broadcast(updateMsg);
-
-                if (gameFinished) {
-                    // --- INTEGRACIÓN DEL LOGGING (Problema 2.B) ---
-                    time_t gameEndTime = time(nullptr);
-                    GameResult logResult = {
-                        partidaCounter,
-                        (int)difftime(gameEndTime, gameStartTime),
-                        (int)teams.size(),
-                        (int)players.size(),
-                        winnerTeam,
-                        currentTeamPos,
-                        turnCounter + 1 // El turno actual cuenta
-                    };
-                    registrar_partida_log(logResult);
-                    // --------------------------------------------------
-
-                    string endMsg = "GAME_OVER;WINNER;" + winnerTeam + ";Felicidades al equipo " + winnerTeam + "!\n";
-                    broadcast(endMsg);
-                    
-                    // Resetear para la siguiente partida
-                    currentPlayerTurnId = 0;
-                    playerOrder.clear();
-                    // No reseteamos el estado a WAITING aquí, para que el servidor 
-                    // sepa que la partida terminó. Se resetea en JOIN o LEAVE.
-                } 
-                else if (advanceTurnCalled) {
-                    advanceTurn();
-                }
+            // ===========================
+            // Mensajes después del lock
+            // ===========================
+            if (!err.empty()) {
+                send(client_fd, err.c_str(), err.size(), 0);
+                return;
             }
 
-        } else if (cmd == "CHAT") { 
-            if (currentState == FINISHED) continue; 
-            string text = (msg.length() > cmd.length() + 1) ? msg.substr(cmd.length() + 1) : ""; 
-            if (!text.empty()) {
-                string chatMsg = "CHAT;" + myName + ";" + text + "\n";
-                broadcast(chatMsg); 
+            broadcast("ROLL_RESULT;" +
+                    to_string(myId) + ";" + myName + ";" +
+                    teamName + ";" + to_string(diceValue) + "\n");
+
+            broadcast("TEAM_UPDATE;" + teamName + ";" + to_string(newPos) + "\n");
+
+            // ===========================
+            // Fin de partida
+            // ===========================
+            if (finished) {
+
+                ejecutar_stats_generator();  // Genera gráficos automáticamente
+
+                broadcast("GAME_OVER;WINNER;" + winner + "\n");
+
+                currentPlayerTurnId = 0;
+                playerOrder.clear();
+                return;
             }
-        } else if (cmd == "LEAVE") { 
-            cout << "Jugador " << myId << " (" << myName << ") solicitó salir.\n";
-            break; 
-        } else {
-            string unknownCmdMsg = "ERROR;Comando desconocido: '" + cmd + "'. Comandos: JOIN, ROLL, CHAT, LEAVE\n";
-            send(client_fd, unknownCmdMsg.c_str(), unknownCmdMsg.size(), 0);
+
+            // ===========================
+            // Avanzar turnos normales
+            // ===========================
+            advanceTurn();
         }
-    } // Fin del bucle while(running)
 
-    // --- Limpieza al desconectar el cliente ---
-    close(client_fd); 
 
-    string disconnectBroadcastMsg = ""; 
-    { 
+        // ----------------------------- CHAT -----------------------------
+        else if (cmd == "CHAT") {
+            if (parts.size() >= 2) {
+                string text = msg.substr(5);
+                broadcast("CHAT;" + myName + ";" + text + "\n");
+            }
+        }
+
+        // ----------------------------- LEAVE ----------------------------
+        else if (cmd == "LEAVE") {
+            break;
+        }
+
+        else {
+            send(client_fd,
+                 "ERROR;Comando no válido\n",
+                 25, 0);
+        }
+    }
+
+    // --------------------------------------------------------------------------------
+    // --- LIMPIEZA DEL JUGADOR AL DESCONECTAR ---
+    // --------------------------------------------------------------------------------
+
+    close(client_fd);
+
+    string dcMsg = "";
+    {
         lock_guard<mutex> lk(global_mtx);
-        cout << "Limpiando datos del jugador " << myId << " (" << myName << ").\n";
-        bool wasTurnHolder = (myId == currentPlayerTurnId); 
-        string teamToUpdate = myTeam; 
 
         if (!myTeam.empty() && teams.count(myTeam)) {
-            auto &vec = teams[myTeam].members;
+            auto& vec = teams[myTeam].members;
             vec.erase(remove(vec.begin(), vec.end(), myId), vec.end());
-            cout << "Jugador " << myId << " eliminado del equipo '" << myTeam << "'. Quedan: " << vec.size() << "\n";
-            if (vec.empty()) {
-                cout << "Equipo '" << myTeam << "' quedó vacío y será eliminado.\n";
+            if (vec.empty())
                 teams.erase(myTeam);
-            }
         }
-        
+
         players.erase(myId);
-        playerOrder.erase(remove(playerOrder.begin(), playerOrder.end(), myId), playerOrder.end());
+        playerOrder.erase(remove(playerOrder.begin(),
+                                 playerOrder.end(),
+                                 myId),
+                          playerOrder.end());
 
-        if (currentState == PLAYING && wasTurnHolder) {
-            cout << "El jugador que tenía el turno (" << myId << ") se desconectó. Avanzando turno...\n";
+        if (currentState == PLAYING && myId == currentPlayerTurnId) {
             if (!playerOrder.empty()) {
-                 currentPlayerTurnId = playerOrder[0]; 
-                 string turnMsg = "TURN;" + to_string(currentPlayerTurnId) + ";" + players[currentPlayerTurnId].name + "\n";
-                 disconnectBroadcastMsg = turnMsg;
-            } else { 
-                currentPlayerTurnId = 0;
-                currentState = WAITING; 
-                disconnectBroadcastMsg = "GAME_STATE;WAITING;Todos los jugadores se han ido. Esperando nuevos jugadores...\n";
+                currentPlayerTurnId = playerOrder[0];
+                dcMsg = "TURN;" + to_string(currentPlayerTurnId) +
+                        ";" + players[currentPlayerTurnId].name + "\n";
+            } else {
+                currentState = WAITING;
+                dcMsg = "GAME_STATE;WAITING;Jugadores insuficientes\n";
             }
         }
-         else if (currentState == PLAYING && !checkGameStartCondition()) {
-             currentState = WAITING;
-             currentPlayerTurnId = 0;
-             playerOrder.clear();
-             disconnectBroadcastMsg = "GAME_STATE;WAITING;Un jugador se fue y ya no se cumple la condición de inicio. Esperando jugadores...\n";
-         }
-         else if (currentState == FINISHED) {
-             currentState = WAITING; // Si estaba en FINISHED y el ganador se fue, se puede resetear.
-         }
-
-    } // Fin del bloque lock_guard
-
-    if (!disconnectBroadcastMsg.empty()) {
-        broadcast(disconnectBroadcastMsg);
     }
- 
-    string leftMsg = "PLAYER_LEFT;" + to_string(myId) + ";" + myName + "\n";
-    broadcast(leftMsg);
 
-    cout << "Conexión cerrada y limpieza completa para el jugador " << myId << ".\n";
+    if (!dcMsg.empty())
+        broadcast(dcMsg);
+
+    broadcast("PLAYER_LEFT;" + to_string(myId) + ";" + myName + "\n");
 }
+// --------------------------------------------------------------------------------
+// --- CARGA DE CONFIGURACIÓN DESDE VARIABLES DE ENTORNO ---
+// --------------------------------------------------------------------------------
 
-
-// Carga la configuración del juego (X, C, R, Min/Max) desde variables de entorno
 void load_env_config() {
- 
-    // --- Valores por defecto (ajustados a un juego de ejemplo si ENV no está) ---
+
     PORT = 4000;
     GAME_BOARD_X = 50;
     POS_VICTORIA_C = 45;
@@ -470,92 +478,95 @@ void load_env_config() {
     MAX_TEAMS = 4;
     MIN_PLAYERS = 1;
     MAX_PLAYERS = 3;
-    // ---------------------------------------------------------------------------
 
     cout << "Cargando configuración desde variables de entorno...\n";
-    if (const char* env_x = getenv("GAME_BOARD_X")) GAME_BOARD_X = atoi(env_x); else cout << "WARN: GAME_BOARD_X no definida, usando por defecto: " << GAME_BOARD_X << endl;
-    if (const char* env_c = getenv("POS_VICTORIA_C")) POS_VICTORIA_C = atoi(env_c); else cout << "WARN: POS_VICTORIA_C no definida, usando por defecto: " << POS_VICTORIA_C << endl;
-    if (const char* env_r = getenv("DICE_R")) DICE_SIDES = atoi(env_r); else cout << "WARN: DICE_R no definida, usando por defecto: " << DICE_SIDES << endl;
-    if (const char* env_min_t = getenv("MIN_TEAMS")) MIN_TEAMS = atoi(env_min_t); else cout << "WARN: MIN_TEAMS no definida, usando por defecto: " << MIN_TEAMS << endl;
-    if (const char* env_max_t = getenv("MAX_TEAMS")) MAX_TEAMS = atoi(env_max_t); else cout << "WARN: MAX_TEAMS no definida, usando por defecto: " << MAX_TEAMS << endl;
-    if (const char* env_min_p = getenv("MIN_PLAYERS")) MIN_PLAYERS = atoi(env_min_p); else cout << "WARN: MIN_PLAYERS no definida, usando por defecto: " << MIN_PLAYERS << endl;
-    if (const char* env_max_p = getenv("MAX_PLAYERS")) MAX_PLAYERS = atoi(env_max_p); else cout << "WARN: MAX_PLAYERS no definida, usando por defecto: " << MAX_PLAYERS << endl;
-    if (const char* env_port = getenv("PORT")) PORT = atoi(env_port); else cout << "WARN: PORT no definida, usando por defecto: " << PORT << endl;
 
-    if (DICE_SIDES < 1) DICE_SIDES = 1; 
-    if (POS_VICTORIA_C <= 0) POS_VICTORIA_C = GAME_BOARD_X; 
-    if (MIN_TEAMS < 1) MIN_TEAMS = 1;
-    if (MIN_PLAYERS < 1) MIN_PLAYERS = 1;
-    if (MAX_TEAMS < MIN_TEAMS) MAX_TEAMS = MIN_TEAMS; 
-    if (MAX_PLAYERS < MIN_PLAYERS) MAX_PLAYERS = MIN_PLAYERS;
+    if (const char* x = getenv("GAME_BOARD_X")) GAME_BOARD_X = atoi(x);
+    if (const char* c = getenv("POS_VICTORIA_C")) POS_VICTORIA_C = atoi(c);
+    if (const char* r = getenv("DICE_R")) DICE_SIDES = atoi(r);
+    if (const char* min_t = getenv("MIN_TEAMS")) MIN_TEAMS = atoi(min_t);
+    if (const char* max_t = getenv("MAX_TEAMS")) MAX_TEAMS = atoi(max_t);
+    if (const char* min_p = getenv("MIN_PLAYERS")) MIN_PLAYERS = atoi(min_p);
+    if (const char* max_p = getenv("MAX_PLAYERS")) MAX_PLAYERS = atoi(max_p);
+    if (const char* p = getenv("PORT")) PORT = atoi(p);
 
-    cout << "\n--- Configuración de Juego Cargada --- \n";
-    cout << "Puerto TCP: " << PORT << "\n";
-    cout << "Tamaño Tablero (X): " << GAME_BOARD_X << "\n";
-    cout << "Posición Victoria (>C): " << POS_VICTORIA_C << "\n";
-    cout << "Caras Dado (R): " << DICE_SIDES << "\n";
-    cout << "Equipos (Min/Max): " << MIN_TEAMS << "/" << MAX_TEAMS << "\n";
-    cout << "Jugadores/Equipo (Min/Max): " << MIN_PLAYERS << "/" << MAX_PLAYERS << "\n";
-    cout << "-------------------------------------\n";
+    cout << "\n--- Configuración cargada ---\n";
+    cout << "PORT = " << PORT << "\n";
+    cout << "TABLERO X = " << GAME_BOARD_X << "\n";
+    cout << "POS_VICTORIA_C = " << POS_VICTORIA_C << "\n";
+    cout << "DICE = " << DICE_SIDES << "\n";
+    cout << "Equipos MIN/MAX = " << MIN_TEAMS << "/" << MAX_TEAMS << "\n";
+    cout << "Jugadores MIN/MAX = " << MIN_PLAYERS << "/" << MAX_PLAYERS << "\n";
+    cout << "-----------------------------\n\n";
 }
 
+
+// --------------------------------------------------------------------------------
+// --- MAIN DEL SERVIDOR ---
+// --------------------------------------------------------------------------------
+
 int main() {
-    load_env_config(); 
+    load_env_config();
 
     int server_fd;
     struct sockaddr_in address;
     int opt = 1;
-    socklen_t addrlen = sizeof(address); 
+    socklen_t addrlen = sizeof(address);
 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
+                   &opt, sizeof(opt)) < 0) {
         perror("setsockopt");
         close(server_fd);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY; 
-    address.sin_port = htons(PORT);       
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
 
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
         perror("bind failed");
         close(server_fd);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
     if (listen(server_fd, 10) < 0) {
         perror("listen failed");
         close(server_fd);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
-    cout << "Servidor de juego iniciado. Escuchando en el puerto " << PORT << ".\n";
-    cout << "Estado actual: WAITING. Se requieren " << MIN_TEAMS << " equipos con al menos " << MIN_PLAYERS << " jugadores cada uno para iniciar.\n"; 
+    cout << "Servidor iniciado en puerto " << PORT << endl;
+    cout << "Estado: WAITING\n";
+    cout << "Esperando mínimo " << MIN_TEAMS << " equipos con "
+         << MIN_PLAYERS << " jugadores cada uno...\n\n";
 
     while (running) {
         int client_fd;
-        
-        if ((client_fd = accept(server_fd, (struct sockaddr *)&address, &addrlen)) < 0) {
-            if (running) {
-                 perror("accept failed");
-            }
-            continue; 
+
+        if ((client_fd = accept(server_fd,
+                                (struct sockaddr*)&address,
+                                &addrlen)) < 0) {
+            if (running)
+                perror("accept failed");
+            continue;
         }
 
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &address.sin_addr, client_ip, INET_ADDRSTRLEN);
-        cout << "\nNueva conexión aceptada desde " << client_ip << ". Asignando ID...\n";
+        cout << "Nueva conexión desde " << client_ip << endl;
 
-        thread client_thread(handle_client, client_fd);
-        client_thread.detach(); 
+        thread t(handle_client, client_fd);
+        t.detach();
     }
 
-    cout << "Cerrando el servidor...\n";
+    cout << "Cerrando servidor...\n";
     close(server_fd);
+
     return 0;
 }
