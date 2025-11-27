@@ -13,12 +13,15 @@ exec_menu = menu
 exec_admin = admin
 exec_multi_matrices = multi_matrices
 exec_crea_idx = creaidx
-exec_crea_indice = creaindiceinvertido
+exec_crea_indice = creaIndiceInvertido
 exec_crea_indice_par = creaIndiceInvertidoParalelo
 exec_game_server = game_server
 exec_game_client = game_client
 exec_benchmark = benchmark
 exec_stats = stats_generator.py
+exec_buscador = buscador_SistOpe
+exec_motor = motor_busqueda
+exec_cache = cache
 
 #rutas completas de ejecutables
 target_menu = $(bin_dir)/$(exec_menu)
@@ -30,11 +33,21 @@ target_crea_indice_par = $(bin_dir)/$(exec_crea_indice_par)
 target_game_server = $(bin_dir)/$(exec_game_server)
 target_game_client = $(bin_dir)/$(exec_game_client)
 target_benchmark = $(bin_dir)/$(exec_benchmark)
+target_buscador = $(bin_dir)/$(exec_buscador)
+target_motor = $(bin_dir)/$(exec_motor)
+target_cache = $(bin_dir)/$(exec_cache)
+
+# Cargar variables desde .env si existe
+ifneq (,$(wildcard .env))
+    include .env
+    export $(shell sed 's/=.*//' .env)
+endif
 
 #regla principal: compilar todo
 all: $(target_menu) $(target_admin) $(target_multi_matrices) \
      $(target_crea_idx) $(target_crea_indice) $(target_crea_indice_par) \
-     $(target_game_server) $(target_game_client) $(target_benchmark)
+     $(target_game_server) $(target_game_client) $(target_benchmark) $(target_buscador) \
+	 $(target_motor) $(target_cache)
 	@echo "todos los ejecutables han sido compilados"
 
 #crear carpetas bin, logs y stats si no existen
@@ -69,6 +82,15 @@ $(target_game_client): $(src_dir)/game_client.cpp | $(bin_dir)
 
 # CORRECCIÓN 2: El benchmark necesita la carpeta stats antes de ejecutarse
 $(target_benchmark): $(src_dir)/benchmark_runner.cpp | $(bin_dir) $(stats_dir)
+	$(cxx) $(cxxflags) $< -o $@
+
+$(target_buscador): $(src_dir)/buscador_SistOpe.cpp | $(bin_dir)
+	$(cxx) $(cxxflags) $< -o $@
+
+$(target_motor): $(src_dir)/motor_busqueda.cpp | $(bin_dir)
+	$(cxx) $(cxxflags) $< -o $@
+
+$(target_cache): $(src_dir)/cache.cpp | $(bin_dir)
 	$(cxx) $(cxxflags) $< -o $@
 
 #limpiar binarios, logs y estadísticas (solo el contenido de las carpetas)

@@ -94,6 +94,7 @@ int main(int argc, char* argv[]) {
         if (opcionesDisponibles.count(7)) cout << "7) Crea indice invertido\n";
         if (opcionesDisponibles.count(8)) cout << "8) Crea inidce invertido paralelo\n"; 
         if (opcionesDisponibles.count(9)) cout << "9) Analisis de Rendimiento (Threads)\n";
+        if (opcionesDisponibles.count(9)) cout << "9) BUSCADOR SistOpe\n";
         cout << "0) Salir\n";
         cout << "Seleccione una opcion: ";
 
@@ -218,6 +219,26 @@ int main(int argc, char* argv[]) {
                     cout << "Iniciando Análisis de Rendimiento...\n";
                     system(pathBenchmark.c_str());
                 }
+                break;
+            }
+            case 10: {
+                const char* prog = getenv("BUSCADOR_SistOpe");
+                string filePath;
+                cout<<"Ingrese ruta completa del archivo .idx a buscar: ";
+                getline(std::cin, filePath);
+                fs::path p(filePath);
+
+                if (!prog){
+                    cerr << "error: La variable de entorno BUSCADOR_SistOpe no esta definida.\n";
+                    break;
+                }
+                if (!fs::exists(p) || !fs::is_regular_file(p) || p.extension() != ".idx") {
+                    std::cerr << "Error: La ruta '" << filePath << "' es invÃ¡lida (no existe, no es archivo o no es .idx).\n";
+                    break;
+                    }
+                string comando = std::string(prog) + " \"" + filePath + "\"";
+                cout << "Ejecutando buscador: " << comando << std::endl;
+                system(comando.c_str());
                 break;
             }
             // --- FIN NUEVO CASE ---
