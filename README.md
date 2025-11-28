@@ -16,7 +16,6 @@ Sistema modular en C++ y Python que integra administración de usuarios, procesa
 
 ## Estructura
 ```
-TrabajoSO/entrega3/
 bin/ # Ejecutables
 logs/ # Registros
 stats/ # Gráficos
