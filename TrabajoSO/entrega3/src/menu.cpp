@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
         if (opcionesDisponibles.count(7)) cout << "7) Crea indice invertido\n";
         if (opcionesDisponibles.count(8)) cout << "8) Crea inidce invertido paralelo\n"; 
         if (opcionesDisponibles.count(9)) cout << "9) Analisis de Rendimiento (Threads)\n";
-        if (opcionesDisponibles.count(9)) cout << "9) BUSCADOR SistOpe\n";
+        if (opcionesDisponibles.count(10)) cout << "10) Buscador SistOperativo\n";
         cout << "0) Salir\n";
         cout << "Seleccione una opcion: ";
 
