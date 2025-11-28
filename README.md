@@ -1,81 +1,223 @@
-# Proyecto – Menú Principal
+# Proyecto Sistemas Operativos - INFO198
 
-**Sistemas Operativos**
+- Universidad Austral de Chile
+- Integrantes: Ian Cuevas, Marcelo Lara, Luca Galaz, Samantha Espinoza, Felipe Reyes
+- Profesor: Dr. Luis Veas-Castillo
 
-**Universidad Austral de Chile**
+## Descripción
+Sistema modular en C++ que integra administración de usuarios, procesamiento de texto con índices invertidos, juego multiplayer y análisis de rendimiento. Desarrollado en cuatro entregas incrementales.
 
-**Profesor:** Dr. Luis Veas-Castillo
+## Requisitos
+- g++ con C++17
+- Linux/Unix
+- pthread
+- Python 3.x (pandas, matplotlib)
+- Make
 
----
+## Estructura
+```
+TrabajoSO/entrega3/
+├── bin/          # Ejecutables
+├── logs/         # Registros
+├── stats/        # Gráficos
+├── src/          # Código fuente
+├── Libros/       # Archivos texto
+├── Makefile
+├── .env
+└── env.sh
+```
 
-## 1. Propósito de la aplicación
-El objetivo principal de este proyecto es construir un **sistema llamado MENÚ PRINCIPAL** que funcione como un administrador de usuarios. El sistema utiliza perfiles de usuario para autenticar y controlar el acceso a sus funcionalidades. El acceso al sistema se realiza mediante argumentos de ejecución y autenticación de usuarios.
-
-### **Nuevas Funcionalidades**
-El programa incorpora las siguientes funcionalidades, que se presentan en un menú de 7 opciones (incluyendo la de salir):
-* **Admin de Usuarios y Perfiles**: Accesible solo para el perfil `ADMIN`. Esta funcionalidad está "en construcción".
-* **Multiplicación de Matrices NxN**: Esta funcionalidad está "en construcción".
-* **Juego**: Esta funcionalidad está "en construcción".
-* **¿Es Palíndromo?**: Permite ingresar un texto y validar si es un palíndromo, ignorando mayúsculas y caracteres no alfanuméricos.
-* **Cálculo de Función**: Permite calcular el valor de la función $f(x) = x^2 + 2x + 8$ y muestra el resultado con números reales.
-* **Conteo sobre Texto**: Realiza un resumen de conteo de vocales, consonantes, caracteres especiales y palabras en un archivo de texto.
-* **Salir**: La opción `0` permite salir del sistema.
-
----
-
-## 2. Ejecución
-El sistema está diseñado para ser compilado y ejecutado desde la consola. Se debe utilizar un `Makefile` para automatizar el proceso de compilación y un conjunto de argumentos para la ejecución y autenticación.
-
-### **Ejecución del menú principal**
-Para una ejecución completa, incluyendo limpieza de archivos y carga de variables de entorno, asegurese de estar en la carpeta del makefile y siga estos pasos en la terminal:
-
-1.  **Limpiar archivos de compilación antiguos:**
-    ```bash
-    rm -rf obj/*
-    rm -f bin/app2
-    ```
-2.  **Compilar el programa:**
-    ```bash
-    make all
-    ```
-3.  **Cargar variables de entorno desde el archivo `.env`:**
-    ```bash
-    export USER_FILE=data/USUARIOS.TXT
-    export PERFIL_FILE=data/PERFILES.TXT
-    ```
-4.  **Ejecutar el programa con usuario, contraseña y archivo:**
-    ```bash
-    ./bin/app2 -u ivan -p 1234 -f libro_8800.txt
-    ```
+## Compilación
+```bash
+make clean  # Limpiar
+make all    # Compilar todo
+```
 
 ---
 
-### **Ejecución del Programa de Multiplicación de Matrices**
-El programa de multiplicación de matrices es un ejecutable separado. Para compilarlo y ejecutarlo debe encontrarse en la carpeta de AdministrarUsuarios y seguir estos pasos:
+# ENTREGA 1: Administrador de Usuarios
 
-1.  **Compilar el programa de matrices:**
-    ```bash
-    g++ multi_matrices.cpp -o multi_matrices
-    ```
-2.  **Ejecutar el programa con las rutas de los archivos de matriz:**
-    ```bash
-    ./multi_matrices "matriz/A.txt" "matriz/B.txt" "#"
-    ```
-   Este programa recibe como argumento las rutas completas de los archivos `A.TXT` y `B.TXT` que contienen las matrices y el separador de los elementos (en este       caso, `#`)
+## Variables de Entorno
+```bash
+export USER_FILE=USUARIOS.TXT
+```
 
----
+## Funcionalidades
+- Crear, eliminar y listar usuarios
+- Struct: id, nombre, username, password, perfil
+- Perfiles: ADMIN y GENERAL
 
-## 3. Descripción de las variables de entorno
-El proyecto utiliza variables de entorno para una configuración flexible sin modificar el código fuente.
-* **`USER_FILE`**: Define la ruta del archivo donde se almacena la información de los usuarios registrados.
-* **`PERFIL_FILE`**: Define la ruta al nuevo archivo (`PERFILES.TXT`) que contiene los perfiles de usuario y las opciones de menú a las que cada perfil tiene acceso.
+## Formato USUARIOS.TXT
+```
+1,Juan Perez,jperez,admin,1234
+```
 
 ---
 
-## 4. Integrantes del grupo
-**GRUPO 7**
-- Cuevas Cárdenas, Ian Alexander.
-- Lara Briones, Marcelo Alejandro.
-- Galaz Esandi, Luca.
-- Espinoza Fuenzalida, Samantha.
-- Reyes Jaramillo, Felipe 
+# ENTREGA 2: Menú Principal y Funcionalidades Básicas
+
+## Variables de Entorno
+```bash
+export USER_FILE=USUARIOS.TXT
+export PERFIL_FILE=PERFILES.TXT
+export ADMIN_SYS=bin/admin.exe
+export MULTI_M=bin/multi_matrices.exe
+```
+
+## Funcionalidades
+
+### Autenticación
+```bash
+./bin/menu -u admin -p 1234 -f libro.txt
+```
+
+### Gestión de Perfiles
+Archivo PERFILES.TXT controla permisos por perfil:
+```
+admin;0,1,2,3,4,5,6
+general;0,2,3,4,5,6
+```
+
+### Multiplicación de Matrices
+- Soporta 3x3 y 4x4
+- Separador: #
+- Validación de formato
+
+### Funciones del Menú
+- Palíndromo (ignora espacios/mayúsculas)
+- f(x) = x² + 2x + 8
+- Conteo: vocales, consonantes, especiales, palabras
+
+---
+
+# ENTREGA 3: Índice Invertido Paralelo y Juego
+
+## Variables de Entorno
+```bash
+# Índice Invertido
+export CREATE_INDEX=bin/creaIndiceInvertido.exe
+export INDICE_INVET_PARALELO=bin/creaIndiceInvertidoParalelo
+export N_THREADS=5
+export N_LOTE=4
+
+# Juego
+export GAME_CLIENT=bin/game_client.exe
+export PORT=4000
+export GAME_BOARD_X=50
+export POS_VICTORIA_C=50
+export DICE_R=30
+export MIN_TEAMS=2
+export MAX_TEAMS=4
+export MIN_PLAYERS=2
+export MAX_PLAYERS=5
+export GAME_LOG_FILE=logs/game_log.csv
+```
+
+## Índice Invertido Paralelo
+
+### Características
+- N threads configurables
+- Procesamiento por lotes
+- Genera MAPA-LIBROS con IDs numéricos
+
+### Archivos Generados
+```
+MAPA-LIBROS.txt:  1; la biblia
+archivo.idx:      palabra;idLibro;frecuencia
+idx_parallel.log: id_thread;id_libro;cant_palabras;ts_inicio;ts_termino
+```
+
+## Juego Multiplayer
+
+### Mecánica
+- Cliente-servidor con sockets
+- Tablero de X posiciones
+- Equipos y jugadores configurables
+- Dado de R caras
+- Condición victoria: superar C posiciones
+
+### Comandos
+```
+JOIN;nombre;equipo  - Unirse
+ROLL               - Tirar dado
+CHAT;mensaje       - Enviar mensaje
+LEAVE              - Salir
+```
+
+### Ejecución
+```bash
+./bin/game_server  # Terminal 1
+./bin/game_client  # Terminal 2+ ó por menú
+```
+
+### Log
+```
+turno_id,jugador_id,jugador_nombre,equipo,avance,posicion_acumulada,timestamp_inicio,timestamp_fin
+```
+
+---
+
+# ENTREGA 4: Buscador y Análisis
+
+## Variables de Entorno
+```bash
+# Buscador
+export BUSCADOR_SistOpe=bin/buscador_SistOpe
+export CACHE=bin/cache
+export MOTOR_BUSQUEDA=bin/motor_busqueda
+export TOPK=3
+export CACHE_SIZE=10
+
+# Análisis
+export BENCHMARK_APP=bin/benchmark
+export PLOT_SCRIPT=src/plot_performance.py
+export STATS_FOLDER=stats
+export STATS_APP="python3 src/stats_generator.py"
+export STATS_OUTPUT_DIR=stats
+```
+
+## Sistema de Búsqueda (3 Capas)
+
+### 1. Buscador
+- Valida archivo .idx
+- Limpia consultas
+- Muestra PID
+
+### 2. Caché
+- Almacena consultas recientes
+- Persistencia en cache.db
+- Tamaño: CACHE_SIZE
+
+### 3. Motor
+- Algoritmo TOPK
+- Mapeo ID → nombre libro
+- Respuesta JSON: `{"Respuesta":[{"Libro":"nombre","score":N}]}`
+
+## Análisis de Rendimiento
+
+### Benchmark Threads
+- Array: [1,2,3,4,5,6,8,12,16]
+- Mide tiempo por configuración
+- Genera gráfico automático
+```bash
+./bin/benchmark
+# Salida: stats/grafico.png
+```
+
+### Estadísticas Juego
+Genera 4 gráficos automáticamente:
+1. Tiempo por turno por jugador
+2. Progreso acumulado por equipo
+3. Promedio de tirada por jugador
+4. Ritmo de avance por equipo
+```bash
+python3 src/stats_generator.py
+# Salida: stats/game_plots/
+```
+
+---
+
+# Notas Importantes
+
+- Servidor juego antes que clientes
+- Cargar variables antes de ejecutar
