@@ -17,14 +17,14 @@ Sistema modular en C++ y Python que integra administración de usuarios, procesa
 ## Estructura
 ```
 TrabajoSO/entrega3/
-├── bin/ # Ejecutables
-├── logs/ # Registros
-├── stats/ # Gráficos
-├── src/ # Código fuente
-├── Libros/  # Archivos texto
-├── Makefile
-├── .env # Variables de entorno
-└── env.sh
+bin/ # Ejecutables
+logs/ # Registros
+stats/ # Gráficos
+src/ # Código fuente
+Libros/  # Archivos texto
+Makefile
+.env # Variables de entorno
+env.sh
 ```
 
 ## Compilación
