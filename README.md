@@ -5,7 +5,7 @@
 - Profesor: Dr. Luis Veas-Castillo
 
 ## Descripción
-Sistema modular en C++ que integra administración de usuarios, procesamiento de texto con índices invertidos, juego multiplayer y análisis de rendimiento. Desarrollado en cuatro entregas incrementales.
+Sistema modular en C++ y Python que integra administración de usuarios, procesamiento de texto con índices invertidos y juego multiplayer. Desarrollado en cuatro entregas incrementales.
 
 ## Requisitos
 - g++ con C++17
@@ -17,20 +17,23 @@ Sistema modular en C++ que integra administración de usuarios, procesamiento de
 ## Estructura
 ```
 TrabajoSO/entrega3/
-├── bin/          # Ejecutables
-├── logs/         # Registros
-├── stats/        # Gráficos
-├── src/          # Código fuente
-├── Libros/       # Archivos texto
+├── bin/ # Ejecutables
+├── logs/ # Registros
+├── stats/ # Gráficos
+├── src/ # Código fuente
+├── Libros/  # Archivos texto
 ├── Makefile
-├── .env
+├── .env # Variables de entorno
 └── env.sh
 ```
 
 ## Compilación
 ```bash
-make clean  # Limpiar
-make all    # Compilar todo
+make clean # Limpiar
+make all # Compilar todo
+source env.sh # Exporta variables de entorno
+./bin/menu -u lvc -p 1111 -f libro_8800.txt # Ingreso al menú
+./bin/game_server # Abre servidor del juego
 ```
 
 ---
@@ -68,7 +71,7 @@ export MULTI_M=bin/multi_matrices.exe
 
 ### Autenticación
 ```bash
-./bin/menu -u admin -p 1234 -f libro.txt
+./bin/menu -u lvc -p 1111 -f libro_8800.txt
 ```
 
 ### Gestión de Perfiles
@@ -146,8 +149,8 @@ LEAVE              - Salir
 
 ### Ejecución
 ```bash
-./bin/game_server  # Terminal 1
-./bin/game_client  # Terminal 2+ ó por menú
+./bin/game_server # Terminal 1
+./bin/game_client # Terminal 2+ ó por menú
 ```
 
 ### Log
