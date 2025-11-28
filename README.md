@@ -118,14 +118,14 @@ export GAME_LOG_FILE=logs/game_log.csv
 
 ### Índice Invertido Paralelo
 
-### Características
+Características
 - N threads configurables
 - Procesamiento por lotes
 - Genera MAPA-LIBROS con IDs numéricos
 
 ### Juego Multiplayer
 
-### Mecánica
+Mecánica
 - Cliente-servidor con sockets
 - Tablero de X posiciones
 - Equipos y jugadores configurables
@@ -175,24 +175,24 @@ export STATS_OUTPUT_DIR=stats
 
 ### Sistema de Búsqueda
 
-### 1. Buscador
+1. Buscador
 - Valida archivo .idx
 - Limpia consultas
 - Muestra PID
 
-### 2. Caché
+2. Caché
 - Almacena consultas recientes
 - Persistencia en cache.db
 - Tamaño: CACHE_SIZE
 
-### 3. Motor
+3. Motor
 - Algoritmo TOPK
 - Mapeo ID → nombre libro
 - Respuesta JSON: `{"Respuesta":[{"Libro":"nombre","score":N}]}`
 
 ### Análisis de Rendimiento
 
-### Benchmark Threads
+Benchmark Threads
 - Array: [1,2,3,4,5,6,8,12,16]
 - Mide tiempo por configuración
 - Genera gráfico automático
@@ -201,8 +201,8 @@ export STATS_OUTPUT_DIR=stats
 # Salida: stats/grafico.png
 ```
 
-### Estadísticas Juego
-Genera 4 gráficos automáticamente:
+Estadísticas Juego
+Genera 4 gráficos automáticamente al finalizar una partida:
 1. Tiempo por turno por jugador
 2. Progreso acumulado por equipo
 3. Promedio de tirada por jugador
