@@ -25,7 +25,7 @@ def main():
         plt.grid(True)
         plt.xticks(data['threads']) # Asegurar que muestre los ticks de los threads usados
 
-        # Guardar imagen (Requerimiento [cite: 52, 53])
+        # Guardar imagen 
         output_file = os.path.join(output_folder, 'grafico_rendimiento.png')
         plt.savefig(output_file)
         print(f"Gráfico guardado exitosamente en: {output_file}")

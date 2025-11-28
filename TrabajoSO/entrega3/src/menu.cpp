@@ -32,7 +32,6 @@ int main(int argc, char* argv[]) {
     const char* benchmarkEnv = std::getenv("BENCHMARK_APP"); 
 
     // Validar que todas las variables de entorno cruciales estén definidas
-    // Se añade la validación para gameClientEnv
     if (!usuariosEnv || !perfilesEnv || !adminSysEnv || !multiMEnv || !creaIndiceEnv || !gameClientEnv) {
         cerr << "Error Critico: Faltan una o más variables de entorno requeridas.\n";
         cerr << "Asegúrese de ejecutar 'make setup' y exportar las variables.\n";
@@ -59,7 +58,7 @@ int main(int argc, char* argv[]) {
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
     }
 
-    cout << "\nPID del proceso Menu: " << getpid() << endl; // Imprime PID [cite: 61]
+    cout << "\nPID del proceso Menu: " << getpid() << endl; // Imprime PID 
 
     // 4. Autenticar usuario y obtener perfil
     string perfilUsuario = verificarLogin(archivoUsuarios, usuario, password);
@@ -70,7 +69,7 @@ int main(int argc, char* argv[]) {
 
     // 5. Cargar opciones permitidas para el perfil
     set<int> opcionesDisponibles = obtenerOpcionesPerfil(perfilUsuario, archivoPerfiles);
-    if (opcionesDisponibles.empty() && perfilUsuario != "admin") { // Permitir admin sin opciones explícitas? Ojo aquí.
+    if (opcionesDisponibles.empty() && perfilUsuario != "admin") { 
         cout << "Advertencia: El perfil '" << perfilUsuario << "' no tiene opciones asignadas en " << archivoPerfiles << ".\n";
     }
 
@@ -84,7 +83,7 @@ int main(int argc, char* argv[]) {
         cout << "--------------------------\n";
 
         // Mostrar opciones dinámicamente según el perfil
-        // Opción 1 solo para admin (validado al cargar opciones) [cite: 63]
+        // Opción 1 solo para admin (validado al cargar opciones)
         if (opcionesDisponibles.count(1)) cout << "1) Admin de usuarios y perfiles\n";
         if (opcionesDisponibles.count(2)) cout << "2) Multiplica matrices NxN\n";
         if (opcionesDisponibles.count(3)) cout << "3) Juego (placeholder)\n";
@@ -122,10 +121,10 @@ int main(int argc, char* argv[]) {
 
         // Ejecutar la acción correspondiente
         switch (opcion) {
-            case 1: { // Lanza admin [cite: 62]
+            case 1: { // Lanza admin 
                 // Validación adicional (aunque ya filtrado por menú): Solo admin puede ejecutar
                 if (perfilUsuario == "admin") {
-                    string comando = pathAdmin; // Path desde ADMIN_SYS [cite: 64]
+                    string comando = pathAdmin; // Path desde ADMIN_SYS 
                     cout << "Ejecutando: " << comando << endl;
                     int result = system(comando.c_str());
                     if (result != 0) {
@@ -137,8 +136,8 @@ int main(int argc, char* argv[]) {
                 }
                 break;
             }
-            case 2: { // Lanza multi_matrices [cite: 65]
-                string comando = pathMulti; // Path desde MULTI_M [cite: 66]
+            case 2: { // Lanza multi_matrices 
+                string comando = pathMulti; // Path desde MULTI_M 
                 cout << "Ejecutando: " << comando << endl;
                 int result = system(comando.c_str());
                 if (result != 0) {
@@ -168,19 +167,19 @@ int main(int argc, char* argv[]) {
                     conteoTexto(filename);
                 }
                 break;
-            case 7: { // Lanza creaIndiceInvertido [cite: 78]
+            case 7: { // Lanza creaIndiceInvertido
                 string nombreArchivo, rutaCarpeta;
                 cout << "\n--- Creacion de Indice Invertido ---\n";
-                cout << "Ingrese el nombre del archivo de salida (debe terminar en .idx): "; // [cite: 81]
+                cout << "Ingrese el nombre del archivo de salida (debe terminar en .idx): "; 
                 getline(cin, nombreArchivo);
 
-                // Validar extensión .idx [cite: 86]
+                // Validar extensión .idx 
                 if (nombreArchivo.length() < 4 || nombreArchivo.substr(nombreArchivo.length() - 4) != ".idx") {
                     cout << "Error: El nombre del archivo debe terminar en .idx\n";
                     break;
                 }
 
-                cout << "Ingrese la ruta de la carpeta con los libros: "; // [cite: 83]
+                cout << "Ingrese la ruta de la carpeta con los libros: ";
                 getline(cin, rutaCarpeta);
 
                 // Validar que la carpeta existe usando filesystem
@@ -189,10 +188,9 @@ int main(int argc, char* argv[]) {
                     break;
                 }
 
-                // Construir comando con comillas para rutas con espacios [cite: 88]
-                string comando = "\"" + pathCreaIndice + "\" \"" + nombreArchivo + "\" \"" + rutaCarpeta + "\""; // Path desde CREATE_INDEX [cite: 79]
-                cout << "Ejecutando: " << comando << endl; // [cite: 84]
-
+                // Construir comando con comillas para rutas con espacios
+                string comando = "\"" + pathCreaIndice + "\" \"" + nombreArchivo + "\" \"" + rutaCarpeta + "\""; // Path desde CREATE_INDEX 
+                cout << "Ejecutando: " << comando << endl;
                 int result = system(comando.c_str());
                 if (result != 0) {
                     cerr << "Error al ejecutar la creacion del indice invertido (código: " << result << ").\n";

@@ -21,9 +21,9 @@ struct Usuario {
 // Declaraciones de funciones locales
 void cargarUsuarios(vector<Usuario>& usuarios, const string& nombreArchivo, int& contadorId);
 void guardarUsuario(const Usuario& u, const string& nombreArchivo);
-void crearUsuario(vector<Usuario>& usuarios, int& contadorId, const string& nombreArchivo); // Simplificado: ya no necesita usuariosAGuardar
+void crearUsuario(vector<Usuario>& usuarios, int& contadorId, const string& nombreArchivo); 
 void listarUsuarios(const vector<Usuario>& usuarios);
-void eliminarUsuario(vector<Usuario>& usuarios, const string& nombreArchivo); // Simplificado
+void eliminarUsuario(vector<Usuario>& usuarios, const string& nombreArchivo); 
 
 int main() {
     int opcion;
@@ -153,8 +153,6 @@ void crearUsuario(vector<Usuario>& usuarios, int& contadorId, const string& nomb
 
     cout << "--- Crear Nuevo Usuario ---\n";
     cout << "Nombre completo del usuario: ";
-    // cin.ignore() es necesario si la lectura anterior fue un número (ej. opción del menú)
-    // getline(cin, u.nombre); // Si ya se limpió el buffer antes, no hace falta ignore
     getline(cin, u.nombre);
 
 
@@ -181,8 +179,6 @@ void crearUsuario(vector<Usuario>& usuarios, int& contadorId, const string& nomb
     do {
         cout << "Ingrese perfil (admin/general): ";
         cin >> u.perfil;
-        // Convertir a minúsculas para comparación flexible (opcional)
-        // std::transform(u.perfil.begin(), u.perfil.end(), u.perfil.begin(), ::tolower);
         if (u.perfil != "admin" && u.perfil != "general") {
             cout << "Perfil inválido. Solo se permite 'admin' o 'general'.\n";
         }

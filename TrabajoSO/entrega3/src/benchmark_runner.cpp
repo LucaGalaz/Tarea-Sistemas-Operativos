@@ -41,7 +41,7 @@ int main() {
     string idxTemp = string(statsFolder) + "/temp_bench.idx";
     string librosDir = "./Libros"; // Asumimos ruta relativa o usar variable de entorno
 
-    // 3. Loop de ejecución (Requerimiento )
+    // 3. Loop de ejecución 
     for (int n : CANT_THREADS) {
         cout << "Ejecutando con N_THREADS = " << n << "... " << flush;
 

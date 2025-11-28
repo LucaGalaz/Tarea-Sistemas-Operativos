@@ -55,7 +55,6 @@ int main(int argc, char* argv[]) {
     
     // 5. Ejecutar el módulo de caché con la consulta compuesta
     ostringstream cmd;
-    // Las comillas dobles son CRÍTICAS para que el argumento llegue a cache.cpp como una sola cadena
     cmd << cachePath << " \"" << consulta << "\"";
 
     cout << "\n>>> Resultados de Búsqueda <<<\n";

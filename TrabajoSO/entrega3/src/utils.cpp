@@ -91,10 +91,6 @@ set<int> obtenerOpcionesPerfil(const string& perfil, const string& archivoPerfil
 
         nombrePerfil = trim(nombrePerfil);
 
-        // Compara el perfil (insensible a mayúsculas/minúsculas opcionalmente)
-        // Para hacerlo insensible: std::transform(nombrePerfil.begin(), nombrePerfil.end(), nombrePerfil.begin(), ::tolower);
-        // string perfilLower = perfil; std::transform(perfilLower.begin(), perfilLower.end(), perfilLower.begin(), ::tolower);
-        // if (nombrePerfil == perfilLower) { ... }
         if (nombrePerfil == perfil) {
             stringstream ss(listaOpciones);
             string token;
@@ -139,7 +135,7 @@ void conteoTexto(const string &filename) {
         for (char c : linea) {
             if (isalpha(static_cast<unsigned char>(c))) {
                 char lower = tolower(c);
-                if (string("aeiou").find(lower) != string::npos) { // Forma más robusta de contar vocales
+                if (string("aeiou").find(lower) != string::npos) { 
                     vocales++;
                 } else {
                     consonantes++;
@@ -155,7 +151,6 @@ void conteoTexto(const string &filename) {
             }
         }
         // Si la línea termina en medio de una palabra, asegúrate de contarla
-        // (Esto se maneja mejor en la lógica original, la mantengo por consistencia)
     }
 
     file.close();

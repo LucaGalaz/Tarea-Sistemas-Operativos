@@ -71,9 +71,8 @@ struct GameResult {
     int n_turnos;
 };
 
-// -------------------------------------------------------
-// NUEVO: Ejecuta stats_generator.py automáticamente
-// -------------------------------------------------------
+// Ejecuta stats_generator.py automáticamente
+
 void ejecutar_stats() {
     const char* stats_cmd = getenv("STATS_APP");
     if (!stats_cmd) {
@@ -91,9 +90,9 @@ void ejecutar_stats() {
     else
         cout << "✔ Gráficos generados exitosamente.\n";
 }
-// --------------------------------------------------------------------------------
-// --- FUNCIONES AUXILIARES: SPLIT / BROADCAST / DADO ---
-// --------------------------------------------------------------------------------
+
+// FUNCIONES AUXILIARES: SPLIT / BROADCAST / DADO 
+
 
 vector<string> split(const string &s, char delim) {
     vector<string> out;
@@ -117,9 +116,9 @@ int rollDice() {
     return dis(gen);
 }
 
-// --------------------------------------------------------------------------------
-// --- VERIFICAR CONDICIONES DE INICIO + MANEJO DE TURNOS ---
-// --------------------------------------------------------------------------------
+
+// VERIFICAR CONDICIONES DE INICIO + MANEJO DE TURNOS
+
 
 bool checkGameStartCondition() {
     if (teams.size() < (size_t)MIN_TEAMS) return false;
@@ -166,9 +165,9 @@ void advanceTurn() {
     broadcast(msg);
 }
 
-// --------------------------------------------------------------------------------
-// --- GENERAR ESTADÍSTICAS AUTOMÁTICAMENTE ---
-// --------------------------------------------------------------------------------
+
+// GENERAR ESTADÍSTICAS AUTOMÁTICAMENTE 
+
 
 void ejecutar_stats_generator() {
     const char* stats_app = getenv("STATS_APP");
@@ -186,9 +185,7 @@ void ejecutar_stats_generator() {
     }
 }
 
-// --------------------------------------------------------------------------------
-// --- MANEJADOR DE CLIENTES ---
-// --------------------------------------------------------------------------------
+// MANEJADOR DE CLIENTES 
 
 void handle_client(int client_fd) {
     int myId;
@@ -288,9 +285,8 @@ void handle_client(int client_fd) {
             }
         }
 
-        // --------------------------------------------------------------------------------
         // --------------------------- CMD ROLL (Tirar dado) ------------------------------
-        // --------------------------------------------------------------------------------
+
         else if (cmd == "ROLL") {
 
             string err = "";
@@ -313,25 +309,17 @@ void handle_client(int client_fd) {
 
                 else {
 
-                    // ===========================
                     // 1) Tiempo fin del turno
-                    // ===========================
                     turnoEndTimestamp = time(nullptr);
 
-                    // ===========================
                     // 2) Tirar dado
-                    // ===========================
                     diceValue = rollDice();
                     teamName = players[myId].team;
 
-                    // ===========================
                     // 3) Posición ANTES de sumar
-                    // ===========================
                     int posAntes = teams[teamName].position;
 
-                    // ===========================
                     // 4) Registrar en log
-                    // ===========================
                     const char* log_file_path = getenv("GAME_LOG_FILE");
                     if (log_file_path) {
                         ofstream log(log_file_path, ios::app);
@@ -352,26 +340,20 @@ void handle_client(int client_fd) {
                             << turnoEndTimestamp << "\n";
                     }
 
-                    // ===========================
                     // 5) Actualizar posición
-                    // ===========================
                     teams[teamName].position += diceValue;
                     newPos = teams[teamName].position;
 
-                    // ===========================
                     // 6) Verificar victoria
-                    // ===========================
                     if (newPos > POS_VICTORIA_C) {
                         finished = true;
                         winner = teamName;
                         currentState = FINISHED;
                     }
                 }
-            } // ← ESTA llave FALTABA en tu código
+            } 
 
-            // ===========================
             // Mensajes después del lock
-            // ===========================
             if (!err.empty()) {
                 send(client_fd, err.c_str(), err.size(), 0);
                 return;
@@ -383,9 +365,7 @@ void handle_client(int client_fd) {
 
             broadcast("TEAM_UPDATE;" + teamName + ";" + to_string(newPos) + "\n");
 
-            // ===========================
             // Fin de partida
-            // ===========================
             if (finished) {
 
                 ejecutar_stats_generator();  // Genera gráficos automáticamente
@@ -397,9 +377,7 @@ void handle_client(int client_fd) {
                 return;
             }
 
-            // ===========================
             // Avanzar turnos normales
-            // ===========================
             advanceTurn();
         }
 
@@ -424,10 +402,7 @@ void handle_client(int client_fd) {
         }
     }
 
-    // --------------------------------------------------------------------------------
-    // --- LIMPIEZA DEL JUGADOR AL DESCONECTAR ---
-    // --------------------------------------------------------------------------------
-
+    // LIMPIEZA DEL JUGADOR AL DESCONECTAR 
     close(client_fd);
 
     string dcMsg = "";
@@ -464,9 +439,7 @@ void handle_client(int client_fd) {
 
     broadcast("PLAYER_LEFT;" + to_string(myId) + ";" + myName + "\n");
 }
-// --------------------------------------------------------------------------------
-// --- CARGA DE CONFIGURACIÓN DESDE VARIABLES DE ENTORNO ---
-// --------------------------------------------------------------------------------
+//CARGA DE CONFIGURACIÓN DESDE VARIABLES DE ENTORNO 
 
 void load_env_config() {
 
@@ -500,10 +473,7 @@ void load_env_config() {
     cout << "-----------------------------\n\n";
 }
 
-
-// --------------------------------------------------------------------------------
-// --- MAIN DEL SERVIDOR ---
-// --------------------------------------------------------------------------------
+// MAIN DEL SERVIDOR
 
 int main() {
     load_env_config();

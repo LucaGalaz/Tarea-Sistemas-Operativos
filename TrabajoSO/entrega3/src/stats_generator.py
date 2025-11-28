@@ -32,9 +32,7 @@ def load():
     return df
 
 
-# ----------------------------------------------------
 # 1) Tiempo por turno por jugador
-# ----------------------------------------------------
 def plot_tiempo_por_turno(df):
     plt.figure(figsize=(10,5))
     for jugador, d in df.groupby("jugador_nombre"):
@@ -49,9 +47,7 @@ def plot_tiempo_por_turno(df):
     plt.close()
 
 
-# ----------------------------------------------------
 # 2) Avance acumulado por turno (por equipo)
-# ----------------------------------------------------
 def plot_avance_por_turno(df):
     plt.figure(figsize=(10,5))
 
@@ -67,10 +63,7 @@ def plot_avance_por_turno(df):
     plt.savefig(f"{OUTPUT_DIR}/02_progreso_por_equipo.png")
     plt.close()
 
-
-# ----------------------------------------------------
 # 3) Promedio de tirada por jugador
-# ----------------------------------------------------
 def plot_promedio_tirada(df):
     stats = df.groupby("jugador_nombre")["avance"].agg(["mean","min","max"])
 
@@ -82,10 +75,7 @@ def plot_promedio_tirada(df):
     plt.savefig(f"{OUTPUT_DIR}/03_promedio_tirada.png")
     plt.close()
 
-
-# ----------------------------------------------------
 # 4) Ritmo de avance promedio por equipo
-# ----------------------------------------------------
 def plot_ritmo_avance(df):
     ritmo = df.groupby("equipo")["avance"].mean()
 
@@ -97,10 +87,7 @@ def plot_ritmo_avance(df):
     plt.savefig(f"{OUTPUT_DIR}/04_ritmo_avance.png")
     plt.close()
 
-
-# ----------------------------------------------------
 # MAIN
-# ----------------------------------------------------
 def main():
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR, exist_ok=True)
