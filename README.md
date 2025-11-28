@@ -115,6 +115,7 @@ export MIN_PLAYERS=2
 export MAX_PLAYERS=5
 export GAME_LOG_FILE=logs/game_log.csv
 ```
+## Funcionalidades
 
 ## Índice Invertido Paralelo
 
@@ -122,13 +123,6 @@ export GAME_LOG_FILE=logs/game_log.csv
 - N threads configurables
 - Procesamiento por lotes
 - Genera MAPA-LIBROS con IDs numéricos
-
-### Archivos Generados
-```
-MAPA-LIBROS.txt:  1; la biblia
-archivo.idx:      palabra;idLibro;frecuencia
-idx_parallel.log: id_thread;id_libro;cant_palabras;ts_inicio;ts_termino
-```
 
 ## Juego Multiplayer
 
@@ -178,8 +172,9 @@ export STATS_FOLDER=stats
 export STATS_APP="python3 src/stats_generator.py"
 export STATS_OUTPUT_DIR=stats
 ```
+## Funcionalidades
 
-## Sistema de Búsqueda (3 Capas)
+## Sistema de Búsqueda
 
 ### 1. Buscador
 - Valida archivo .idx
