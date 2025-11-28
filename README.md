@@ -116,14 +116,14 @@ export GAME_LOG_FILE=logs/game_log.csv
 ```
 ## Funcionalidades
 
-## Índice Invertido Paralelo
+### Índice Invertido Paralelo
 
 ### Características
 - N threads configurables
 - Procesamiento por lotes
 - Genera MAPA-LIBROS con IDs numéricos
 
-## Juego Multiplayer
+### Juego Multiplayer
 
 ### Mecánica
 - Cliente-servidor con sockets
@@ -173,7 +173,7 @@ export STATS_OUTPUT_DIR=stats
 ```
 ## Funcionalidades
 
-## Sistema de Búsqueda
+### Sistema de Búsqueda
 
 ### 1. Buscador
 - Valida archivo .idx
@@ -190,7 +190,7 @@ export STATS_OUTPUT_DIR=stats
 - Mapeo ID → nombre libro
 - Respuesta JSON: `{"Respuesta":[{"Libro":"nombre","score":N}]}`
 
-## Análisis de Rendimiento
+### Análisis de Rendimiento
 
 ### Benchmark Threads
 - Array: [1,2,3,4,5,6,8,12,16]
